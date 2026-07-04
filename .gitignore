@@ -1,0 +1,9 @@
+# Secrets — never commit R2 keys
+config.json
+
+# Local image derivatives (they live on R2; media/ can be regenerated)
+admin/media/
+
+__pycache__/
+*.pyc
+.DS_Store

@@ -1,0 +1,366 @@
+/* Slate Gravestones — admin SPA (vanilla JS) */
+const $ = (s) => document.querySelector(s);
+const api = async (url, opts = {}) => {
+  if (opts.body && typeof opts.body !== "string") {
+    opts.headers = { "Content-Type": "application/json" };
+    opts.body = JSON.stringify(opts.body);
+  }
+  const r = await fetch(url, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("#tabs button").forEach((b) =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#tabs button, .tab").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    $("#tab-" + b.dataset.tab).classList.add("active");
+    if (b.dataset.tab === "cemeteries") setTimeout(() => cemMap?.resize(), 50);
+  }));
+
+async function refreshSummary() {
+  const s = await api("/api/summary");
+  $("#summary").textContent =
+    `${s.cemeteries} cemeteries · ${s.stones} stones · ${s.photos} photos · ` +
+    `${s.untagged} untagged · ${s.unsynced} not on R2`;
+  if (!$("#importDir").value && s.source_dir) $("#importDir").value = s.source_dir;
+  window._sum = s;
+}
+
+/* ---------- cemeteries ---------- */
+let cemMap, cemMarker, cemeteries = [];
+
+function initCemMap() {
+  cemMap = new maplibregl.Map({
+    container: "cemMap",
+    style: "https://tiles.openfreemap.org/styles/liberty",
+    center: [-73.2, 43.5], zoom: 5,
+  });
+  cemMap.addControl(new maplibregl.NavigationControl());
+  cemMap.on("click", (e) => {
+    if ($("#cemForm").classList.contains("hidden")) return;
+    $("#cemLat").value = e.lngLat.lat.toFixed(6);
+    $("#cemLng").value = e.lngLat.lng.toFixed(6);
+    setCemMarker(e.lngLat.lng, e.lngLat.lat);
+  });
+}
+function setCemMarker(lng, lat) {
+  if (cemMarker) cemMarker.remove();
+  cemMarker = new maplibregl.Marker({ color: "#35606e" })
+    .setLngLat([lng, lat]).addTo(cemMap);
+}
+
+async function loadCemeteries() {
+  cemeteries = await api("/api/cemeteries");
+  $("#cemList").innerHTML = cemeteries.map((c) =>
+    `<li data-id="${c.id}"><span>${esc(c.name)}</span>
+     <span class="n">${esc(c.state || c.country)} · ${c.stones} stones</span></li>`).join("");
+  const opts = cemeteries.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  $("#importCem").innerHTML = opts;
+  $("#sdCem").innerHTML = opts;
+  $("#stoneCemFilter").innerHTML = `<option value="">All cemeteries</option>` + opts;
+  document.querySelectorAll("#cemList li").forEach((li) =>
+    li.addEventListener("click", () => editCem(+li.dataset.id)));
+}
+
+function showCemForm(c) {
+  $("#cemForm").classList.remove("hidden");
+  $("#cemId").value = c?.id || "";
+  $("#cemName").value = c?.name || "";
+  $("#cemCity").value = c?.city || "";
+  $("#cemState").value = c?.state || "";
+  $("#cemCountry").value = c?.country || "United States";
+  $("#cemLat").value = c?.lat ?? "";
+  $("#cemLng").value = c?.lng ?? "";
+  $("#cemNotes").value = c?.notes || "";
+  $("#cemDelete").classList.toggle("hidden", !c);
+  if (c?.lat != null) { setCemMarker(c.lng, c.lat); cemMap.flyTo({ center: [c.lng, c.lat], zoom: 13 }); }
+}
+function editCem(id) { showCemForm(cemeteries.find((c) => c.id === id)); }
+
+$("#cemNew").addEventListener("click", () => showCemForm(null));
+$("#cemCancel").addEventListener("click", () => $("#cemForm").classList.add("hidden"));
+$("#cemForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const d = {
+    name: $("#cemName").value, city: $("#cemCity").value,
+    state: $("#cemState").value, country: $("#cemCountry").value,
+    lat: parseFloat($("#cemLat").value) || null,
+    lng: parseFloat($("#cemLng").value) || null,
+    notes: $("#cemNotes").value,
+  };
+  const id = $("#cemId").value;
+  if (id) await api(`/api/cemeteries/${id}`, { method: "PUT", body: d });
+  else await api("/api/cemeteries", { method: "POST", body: d });
+  $("#cemForm").classList.add("hidden");
+  await loadCemeteries(); refreshSummary();
+});
+$("#cemDelete").addEventListener("click", async () => {
+  const id = $("#cemId").value;
+  if (!id || !confirm("Delete this cemetery?")) return;
+  try { await api(`/api/cemeteries/${id}`, { method: "DELETE" }); }
+  catch (err) { alert(err.message); return; }
+  $("#cemForm").classList.add("hidden");
+  await loadCemeteries(); refreshSummary();
+});
+$("#geoBtn").addEventListener("click", async () => {
+  const q = $("#geoQuery").value.trim();
+  if (!q) return;
+  const r = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=5&q=" +
+    encodeURIComponent(q));
+  const res = await r.json();
+  $("#geoResults").innerHTML = res.map((x, i) =>
+    `<div data-i="${i}">${esc(x.display_name)}</div>`).join("") || "<div>No results</div>";
+  document.querySelectorAll("#geoResults div[data-i]").forEach((el) =>
+    el.addEventListener("click", () => {
+      const x = res[+el.dataset.i];
+      $("#cemLat").value = (+x.lat).toFixed(6);
+      $("#cemLng").value = (+x.lon).toFixed(6);
+      setCemMarker(+x.lon, +x.lat);
+      cemMap.flyTo({ center: [+x.lon, +x.lat], zoom: 14 });
+      $("#geoResults").innerHTML = "";
+    }));
+});
+
+/* ---------- import ---------- */
+let scanFiles = [], selected = new Set();
+
+$("#scanBtn").addEventListener("click", async () => {
+  $("#impStatus").textContent = "Scanning…";
+  try {
+    const r = await api("/api/import/scan?dir=" + encodeURIComponent($("#importDir").value));
+    scanFiles = r.files; selected.clear();
+    $("#impStatus").textContent = `${r.files.length} new photo(s) found`;
+    $("#importGrid").innerHTML = r.files.map((f, i) =>
+      `<div class="card" data-i="${i}">
+         <img loading="lazy" src="/orig?path=${encodeURIComponent(f.path)}">
+         <div class="cap" title="${esc(f.rel)}">${esc(f.rel)}</div></div>`).join("");
+    document.querySelectorAll("#importGrid .card").forEach((el) =>
+      el.addEventListener("click", () => {
+        const i = +el.dataset.i;
+        selected.has(i) ? selected.delete(i) : selected.add(i);
+        el.classList.toggle("sel");
+        updateImpButtons();
+      }));
+    updateImpButtons();
+  } catch (err) { $("#impStatus").textContent = err.message; }
+});
+function updateImpButtons() {
+  $("#impOnePer").disabled = selected.size === 0 || !$("#importCem").value;
+  $("#impGroup").disabled = selected.size < 2 || !$("#importCem").value;
+}
+async function runImport(groups) {
+  const cem = +$("#importCem").value;
+  let done = 0;
+  for (const g of groups) {
+    $("#impStatus").textContent = `Importing ${++done}/${groups.length}…`;
+    try {
+      const r = await api("/api/import", { method: "POST",
+        body: { paths: g, cemetery_id: cem } });
+      r.errors.forEach((e) => console.warn(e));
+    } catch (err) { alert(err.message); break; }
+  }
+  $("#impStatus").textContent = "Done. Rescanning…";
+  selected.clear();
+  $("#scanBtn").click();
+  refreshSummary(); loadStones();
+}
+$("#impOnePer").addEventListener("click", () =>
+  runImport([...selected].sort().map((i) => [scanFiles[i].path])));
+$("#impGroup").addEventListener("click", () =>
+  runImport([[...selected].sort().map((i) => scanFiles[i].path)]));
+$("#importCem").addEventListener("change", updateImpButtons);
+
+/* ---------- stones ---------- */
+let cats = [], curStone = null;
+
+async function loadCats() { cats = await api("/api/categories"); renderCatAdmin(); }
+
+async function loadStones() {
+  const p = new URLSearchParams();
+  if ($("#stoneCemFilter").value) p.set("cemetery", $("#stoneCemFilter").value);
+  if ($("#stoneUntagged").checked) p.set("untagged", "1");
+  if ($("#stoneSearch").value) p.set("q", $("#stoneSearch").value);
+  const rows = await api("/api/stones?" + p);
+  $("#stoneGrid").innerHTML = rows.map((s) =>
+    `<div class="card ${curStone === s.id ? "sel" : ""}" data-id="${s.id}">
+       ${s.thumb ? `<img loading="lazy" src="/media/${s.thumb}/thumb.jpg">` : ""}
+       <span class="badge ${s.ntags ? "" : "warn"}">${s.ntags ? s.ntags + " tags" : "untagged"}</span>
+       <div class="cap">#${s.id} ${esc(s.title || "")} ${s.year || ""} · ${esc(s.cemetery)}</div>
+     </div>`).join("") || "<p class='hint'>No stones match.</p>";
+  document.querySelectorAll("#stoneGrid .card").forEach((el) =>
+    el.addEventListener("click", () => openStone(+el.dataset.id)));
+}
+["stoneCemFilter", "stoneUntagged"].forEach((id) =>
+  $("#" + id).addEventListener("change", loadStones));
+$("#stoneSearch").addEventListener("input", () => {
+  clearTimeout(window._st); window._st = setTimeout(loadStones, 300);
+});
+
+async function openStone(id) {
+  const s = await api("/api/stones/" + id);
+  curStone = id;
+  $("#stoneHint").classList.add("hidden");
+  $("#stoneDetail").classList.remove("hidden");
+  $("#sdTitleHead").textContent = `Stone #${id}`;
+  $("#sdTitle").value = s.title || "";
+  $("#sdYear").value = s.year ?? "";
+  $("#sdDate").value = s.date_text || "";
+  $("#sdNotes").value = s.notes || "";
+  $("#sdCem").value = s.cemetery_id;
+  $("#sdPhotos").innerHTML = s.photos.map((p) =>
+    `<div class="ph ${p.is_primary ? "primary" : ""}">
+       <a href="/media/${p.id}/disp.jpg" target="_blank"><img src="/media/${p.id}/thumb.jpg"></a>
+       <div class="tools">
+         <button data-act="primary" data-id="${p.id}" title="Set as primary">★</button>
+         <button data-act="del" data-id="${p.id}" title="Remove photo">✕</button>
+       </div></div>`).join("");
+  $("#sdPhotos").querySelectorAll("button").forEach((b) =>
+    b.addEventListener("click", async () => {
+      if (b.dataset.act === "primary")
+        await api(`/api/photos/${b.dataset.id}/primary`, { method: "PUT" });
+      else if (confirm("Remove this photo from the library?"))
+        await api(`/api/photos/${b.dataset.id}`, { method: "DELETE" });
+      openStone(id); loadStones();
+    }));
+  renderTagGroups(new Set(s.tag_ids));
+  document.querySelectorAll("#stoneGrid .card").forEach((el) =>
+    el.classList.toggle("sel", +el.dataset.id === id));
+}
+
+function renderTagGroups(selectedIds) {
+  $("#sdTagGroups").innerHTML = cats.map((c) => `
+    <div class="taggroup" data-cat="${c.id}" data-single="${c.single}">
+      <h4>${esc(c.name)}${c.single ? " (pick one)" : ""}</h4>
+      <div class="chips">
+        ${c.tags.map((t) =>
+          `<span class="chip ${selectedIds.has(t.id) ? "on" : ""}" data-id="${t.id}">${esc(t.name)}</span>`).join("")}
+        <span class="chip add" data-cat="${c.id}">+ add</span>
+      </div>
+    </div>`).join("");
+  $("#sdTagGroups").querySelectorAll(".chip:not(.add)").forEach((chip) =>
+    chip.addEventListener("click", () => {
+      const grp = chip.closest(".taggroup");
+      if (grp.dataset.single === "1" && !chip.classList.contains("on"))
+        grp.querySelectorAll(".chip.on").forEach((c) => c.classList.remove("on"));
+      chip.classList.toggle("on");
+    }));
+  $("#sdTagGroups").querySelectorAll(".chip.add").forEach((chip) =>
+    chip.addEventListener("click", async () => {
+      const name = prompt("New tag name:");
+      if (!name) return;
+      try {
+        const r = await api("/api/tags", { method: "POST",
+          body: { category_id: +chip.dataset.cat, name } });
+        await loadCats();
+        const on = new Set([...$("#sdTagGroups").querySelectorAll(".chip.on")]
+          .map((c) => +c.dataset.id));
+        on.add(r.id);
+        renderTagGroups(on);
+      } catch (err) { alert(err.message); }
+    }));
+}
+
+$("#sdForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await api(`/api/stones/${curStone}`, { method: "PUT", body: {
+    title: $("#sdTitle").value,
+    year: parseInt($("#sdYear").value) || null,
+    date_text: $("#sdDate").value,
+    notes: $("#sdNotes").value,
+    cemetery_id: +$("#sdCem").value,
+  }});
+  const tag_ids = [...$("#sdTagGroups").querySelectorAll(".chip.on")].map((c) => +c.dataset.id);
+  await api(`/api/stones/${curStone}/tags`, { method: "PUT", body: { tag_ids } });
+  $("#sdStatus").textContent = "Saved ✓";
+  setTimeout(() => ($("#sdStatus").textContent = ""), 1500);
+  loadStones(); refreshSummary();
+});
+$("#sdDelete").addEventListener("click", async () => {
+  if (!confirm("Delete this stone and its photos from the library?")) return;
+  await api(`/api/stones/${curStone}`, { method: "DELETE" });
+  $("#stoneDetail").classList.add("hidden");
+  $("#stoneHint").classList.remove("hidden");
+  curStone = null;
+  loadStones(); refreshSummary();
+});
+
+/* ---------- tags admin ---------- */
+function renderCatAdmin() {
+  $("#catList").innerHTML = cats.map((c) => `
+    <div class="catblock">
+      <h3>${esc(c.name)} <small class="hint">${c.single ? "single-select" : "multi-select"}</small></h3>
+      ${c.tags.map((t) =>
+        `<span class="tagrow">${esc(t.name)} <span class="use">${t.used}</span>
+         ${t.used ? "" : `<button data-id="${t.id}" title="Delete unused tag">✕</button>`}</span>`).join("")}
+      <span class="tagrow"><button class="addtag" data-cat="${c.id}">+ add tag</button></span>
+    </div>`).join("");
+  $("#catList").querySelectorAll("button[data-id]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      try { await api(`/api/tags/${b.dataset.id}`, { method: "DELETE" }); loadCats(); }
+      catch (err) { alert(err.message); }
+    }));
+  $("#catList").querySelectorAll(".addtag").forEach((b) =>
+    b.addEventListener("click", async () => {
+      const name = prompt("New tag name:");
+      if (!name) return;
+      try { await api("/api/tags", { method: "POST",
+        body: { category_id: +b.dataset.cat, name } }); loadCats(); }
+      catch (err) { alert(err.message); }
+    }));
+}
+$("#catForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await api("/api/categories", { method: "POST",
+      body: { name: $("#catName").value, single: $("#catSingle").checked } });
+    $("#catName").value = "";
+    loadCats();
+  } catch (err) { alert(err.message); }
+});
+
+/* ---------- publish ---------- */
+$("#syncBtn").addEventListener("click", async () => {
+  $("#syncStatus").textContent = "Syncing…";
+  try {
+    let remaining = 1, total = 0;
+    while (remaining > 0) {
+      const r = await api("/api/r2/sync", { method: "POST", body: { limit: 10 } });
+      total += r.done.length;
+      remaining = r.remaining;
+      if (r.errors.length) throw new Error(r.errors[0].error);
+      $("#syncStatus").textContent = `Uploaded ${total}, ${remaining} remaining…`;
+    }
+    $("#syncStatus").textContent = `All images synced ✓ (${total} uploaded)`;
+  } catch (err) { $("#syncStatus").textContent = "Error: " + err.message; }
+  refreshSummary();
+});
+$("#exportBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/publish", { method: "POST" });
+    $("#exportStatus").textContent =
+      `Exported ${r.stones} stones, ${r.cemeteries} cemeteries ✓`;
+  } catch (err) { $("#exportStatus").textContent = "Error: " + err.message; }
+});
+function renderPubStatus() {
+  const s = window._sum || {};
+  $("#pubStatus").innerHTML = s.r2_configured
+    ? "<p>R2 is configured.</p>"
+    : "<p class='warn'>R2 is NOT configured — edit <code>config.json</code> " +
+      "(see README “Cloudflare R2 setup”). You can import and tag now and sync later.</p>";
+}
+
+/* ---------- init ---------- */
+(async function init() {
+  initCemMap();
+  await refreshSummary();
+  await loadCemeteries();
+  await loadCats();
+  await loadStones();
+  renderPubStatus();
+  document.querySelector('[data-tab="publish"]').addEventListener("click", renderPubStatus);
+})();

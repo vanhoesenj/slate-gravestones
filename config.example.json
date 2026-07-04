@@ -1,0 +1,10 @@
+{
+  "photo_source_dir": "/Users/jvh/Library/CloudStorage/GoogleDrive-YOUR-ACCOUNT/My Drive/Gravestones",
+  "r2": {
+    "account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+    "access_key_id": "YOUR_R2_ACCESS_KEY_ID",
+    "secret_access_key": "YOUR_R2_SECRET_ACCESS_KEY",
+    "bucket": "slate-gravestones",
+    "public_base_url": "https://pub-XXXXXXXX.r2.dev"
+  }
+}

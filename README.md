@@ -1,0 +1,105 @@
+# Slate Gravestones — a visual library
+
+An interactive library of slate grave markers: photos tagged by cemetery,
+date, gravestone shape, and iconography, browsable on a MapLibre map with
+filters and charts.
+
+Architecture: **GitHub Pages** serves the public site from `docs/`;
+**Cloudflare R2** hosts the images (free tier, zero egress); a **local admin
+app** (Flask + SQLite) handles importing, tagging, and publishing. The public
+site is fully static — it reads one JSON file and the R2 images.
+
+```
+admin/       local admin app (never deployed) — python admin/app.py
+data/        library.db — SQLite source of truth (created on first run)
+docs/        the public site, served by GitHub Pages
+scripts/     smoke_test.py — end-to-end test of the admin pipeline
+config.json  your R2 keys + photo folder (gitignored; copy config.example.json)
+```
+
+## One-time setup
+
+### 1. Python
+
+```bash
+cd admin
+pip3 install -r requirements.txt
+python3 app.py          # → http://localhost:5050
+```
+
+(If you import iPhone HEIC files directly, also `pip3 install pillow-heif`.)
+
+### 2. Cloudflare R2 (~10 minutes, free)
+
+1. Sign up / log in at dash.cloudflare.com → **R2 Object Storage**
+   (requires adding a payment card, but the 10 GB free tier means $0 for this
+   project's scale).
+2. **Create bucket** → name it `slate-gravestones` (location: Eastern North
+   America).
+3. In the bucket → **Settings → Public access → R2.dev subdomain → Allow**.
+   Copy the URL it gives you (`https://pub-….r2.dev`).
+4. Back on the R2 overview page → **Manage R2 API Tokens → Create API Token**:
+   permission "Object Read & Write", scope it to this bucket. Copy the
+   **Access Key ID** and **Secret Access Key** (shown once).
+5. Your **Account ID** is on the R2 overview page sidebar.
+6. `cp config.example.json config.json` and fill in all five values, plus
+   `photo_source_dir` — the folder the ingest scans (your Google Drive
+   gravestones folder; with Drive for desktop it's usually under
+   `/Users/you/Library/CloudStorage/GoogleDrive-…/My Drive/…`).
+
+Later, you can swap the r2.dev URL for a custom domain (bucket → Settings →
+Custom Domains) and just update `public_base_url` + republish.
+
+### 3. GitHub Pages
+
+```bash
+git remote add origin git@github.com:YOURUSER/slate-gravestones.git
+git push -u origin main
+```
+
+On GitHub: repo → **Settings → Pages → Deploy from a branch →
+`main` / `docs`**. The site appears at
+`https://YOURUSER.github.io/slate-gravestones/` a minute or two after each
+push. (Custom domain later: add it under Pages settings and site paths need
+no changes — everything is relative.)
+
+## Daily workflow
+
+1. `python3 admin/app.py` → open http://localhost:5050
+2. **Cemeteries** — add a cemetery; click the map or use the place search to
+   set its location.
+3. **Import** — scan your photo folder; already-imported photos are skipped
+   automatically. Select photos and import "one stone per photo", or select
+   several shots of the same marker and import "as ONE stone". Derivatives
+   (480px thumb + 2000px display JPEG) are generated locally; originals are
+   never modified or uploaded.
+4. **Stones** — click a stone: set name/date, pick a Shape (single-select),
+   toggle Iconography chips, "+ add" creates a new tag on the spot. The
+   "untagged only" filter is your to-do list.
+5. **Tags** tab — add whole new categories (e.g. Carver, Condition) anytime;
+   they appear immediately in the editor and as site filters after publishing.
+6. **Publish** — ① sync images to R2 ② export `library.json` ③ commit & push:
+
+   ```bash
+   git add docs/data/library.json
+   git commit -m "Update library"
+   git push
+   ```
+
+## Notes & gotchas
+
+- **Dropbox + git**: this repo lives in Dropbox. Dropbox syncing `.git/` can
+  leave stale `HEAD.lock`/`index.lock` files that block commits (this bit the
+  slate-map repo). Fix: in Finder press Cmd+Shift+. to show hidden files and
+  delete the `.lock` files — or better, tell Dropbox to ignore `.git/`
+  (right-click folder → "Don't sync to dropbox.com"), or move the repo out of
+  Dropbox entirely (GitHub is already the backup).
+- `data/library.db` **is committed** — it's small, and pushing it means GitHub
+  also backs up your catalog. `admin/media/` and `config.json` are not.
+- Deleting a photo/stone in the admin removes it from the library but never
+  touches your original files.
+- Test the pipeline anytime: `SG_DB=/tmp/t.db python3 scripts/smoke_test.py`
+  (uses a throwaway DB; cleans up after itself).
+- Free-tier ceilings, for reference: R2 10 GB storage ≈ ~10–15k photos at
+  these derivative sizes; GitHub Pages soft limits (1 GB repo, 100 GB/mo
+  bandwidth) are nowhere near being an issue since images don't live there.

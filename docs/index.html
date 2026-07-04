@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Slate Gravestones — A Visual Library</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="An interactive library of slate grave markers: shapes, iconography, dates, and the cemeteries where they stand.">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Slate Gravestones</h1>
+    <p class="sub">A visual library of slate grave markers — shapes, carvers' iconography, and the cemeteries where they stand.</p>
+  </div>
+  <div id="counts"></div>
+</header>
+
+<div id="layout">
+  <aside id="filters">
+    <h2>Filter</h2>
+    <label>Country <select id="fCountry"><option value="">All</option></select></label>
+    <label>State <select id="fState"><option value="">All</option></select></label>
+    <label>Cemetery <select id="fCemetery"><option value="">All</option></select></label>
+    <label>Date on stone
+      <div class="range">
+        <input id="fYearMin" type="number" placeholder="from">
+        <input id="fYearMax" type="number" placeholder="to">
+      </div>
+    </label>
+    <div id="tagFilters"></div>
+    <button id="clearBtn">Clear all filters</button>
+  </aside>
+
+  <main>
+    <div id="map"></div>
+
+    <section id="chartPanel">
+      <div class="chartCtl">
+        <label>Chart <select id="chartCat"></select></label>
+        <label>Grouped by <select id="chartGroup">
+          <option value="none">— overall —</option>
+          <option value="state">state</option>
+          <option value="cemetery">cemetery</option>
+        </select></label>
+      </div>
+      <div class="chartRow">
+        <div class="chartBox"><canvas id="tagChart"></canvas></div>
+        <div class="chartBox"><canvas id="decadeChart"></canvas></div>
+      </div>
+    </section>
+
+    <section id="gallerySec">
+      <h2 id="galleryHead"></h2>
+      <div id="gallery"></div>
+    </section>
+  </main>
+</div>
+
+<div id="lightbox" class="hidden">
+  <div id="lbCard">
+    <button id="lbClose">✕</button>
+    <div id="lbPhotos"></div>
+    <div id="lbMeta"></div>
+  </div>
+</div>
+
+<footer>
+  Map data © OpenStreetMap contributors · tiles by OpenFreeMap ·
+  built as a companion to <a href="https://www.thestoryofslate.com">The Story of Slate</a>
+</footer>
+
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="site.js"></script>
+</body>
+</html>

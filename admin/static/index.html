@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Slate Gravestones — Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+<header>
+  <h1>Slate Gravestones <span>admin</span></h1>
+  <nav id="tabs">
+    <button data-tab="cemeteries" class="active">Cemeteries</button>
+    <button data-tab="import">Import</button>
+    <button data-tab="stones">Stones</button>
+    <button data-tab="tags">Tags</button>
+    <button data-tab="publish">Publish</button>
+  </nav>
+  <div id="summary"></div>
+</header>
+
+<main>
+  <!-- CEMETERIES -->
+  <section id="tab-cemeteries" class="tab active">
+    <div class="split">
+      <div class="pane">
+        <h2>Cemeteries</h2>
+        <ul id="cemList" class="rowlist"></ul>
+        <button id="cemNew" class="primary">+ New cemetery</button>
+        <form id="cemForm" class="hidden">
+          <input type="hidden" id="cemId">
+          <label>Name <input id="cemName" required></label>
+          <div class="grid3">
+            <label>City/Town <input id="cemCity"></label>
+            <label>State <input id="cemState"></label>
+            <label>Country <input id="cemCountry" value="United States"></label>
+          </div>
+          <div class="grid2">
+            <label>Lat <input id="cemLat" type="number" step="any"></label>
+            <label>Lng <input id="cemLng" type="number" step="any"></label>
+          </div>
+          <label>Notes <textarea id="cemNotes" rows="2"></textarea></label>
+          <p class="hint">Click the map to set the location, or search below.</p>
+          <div class="searchrow">
+            <input id="geoQuery" placeholder="Search a place (Nominatim)…">
+            <button type="button" id="geoBtn">Search</button>
+          </div>
+          <div id="geoResults"></div>
+          <div class="btnrow">
+            <button type="submit" class="primary">Save</button>
+            <button type="button" id="cemDelete" class="danger">Delete</button>
+            <button type="button" id="cemCancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+      <div class="pane"><div id="cemMap"></div></div>
+    </div>
+  </section>
+
+  <!-- IMPORT -->
+  <section id="tab-import" class="tab">
+    <h2>Import photos</h2>
+    <div class="searchrow">
+      <input id="importDir" placeholder="Folder to scan (defaults to config.json photo_source_dir)">
+      <button id="scanBtn" class="primary">Scan for new photos</button>
+    </div>
+    <div class="btnrow">
+      <label>Cemetery: <select id="importCem"></select></label>
+      <button id="impOnePer" disabled>Import selected — one stone per photo</button>
+      <button id="impGroup" disabled>Import selected as ONE stone</button>
+      <span id="impStatus"></span>
+    </div>
+    <p class="hint">Select photos below. Use “one stone per photo” for the common case;
+      select several shots of the same marker and use “as ONE stone” to group them.</p>
+    <div id="importGrid" class="photogrid"></div>
+  </section>
+
+  <!-- STONES -->
+  <section id="tab-stones" class="tab">
+    <div class="split">
+      <div class="pane">
+        <h2>Stones</h2>
+        <div class="btnrow">
+          <select id="stoneCemFilter"><option value="">All cemeteries</option></select>
+          <label class="chk"><input type="checkbox" id="stoneUntagged"> Untagged only</label>
+          <input id="stoneSearch" placeholder="Search title/notes…">
+        </div>
+        <div id="stoneGrid" class="photogrid"></div>
+      </div>
+      <div class="pane">
+        <div id="stoneDetail" class="hidden">
+          <h2 id="sdTitleHead"></h2>
+          <div id="sdPhotos" class="photostrip"></div>
+          <form id="sdForm">
+            <label>Name on stone <input id="sdTitle"></label>
+            <div class="grid2">
+              <label>Year <input id="sdYear" type="number" min="1600" max="2100"></label>
+              <label>Date as inscribed <input id="sdDate" placeholder="e.g. Mar. 4, 1847"></label>
+            </div>
+            <label>Cemetery <select id="sdCem"></select></label>
+            <label>Notes <textarea id="sdNotes" rows="2"></textarea></label>
+            <div id="sdTagGroups"></div>
+            <div class="btnrow">
+              <button type="submit" class="primary">Save stone</button>
+              <button type="button" id="sdDelete" class="danger">Delete stone</button>
+              <span id="sdStatus"></span>
+            </div>
+          </form>
+        </div>
+        <p id="stoneHint" class="hint">Select a stone to edit it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAGS -->
+  <section id="tab-tags" class="tab">
+    <h2>Tag categories</h2>
+    <p class="hint">Categories group tags (Shape, Iconography, …). “Single” categories
+      allow one tag per stone; others allow many. New categories and tags appear
+      immediately in the stone editor and, after publishing, as site filters.</p>
+    <div id="catList"></div>
+    <form id="catForm" class="btnrow">
+      <input id="catName" placeholder="New category name" required>
+      <label class="chk"><input type="checkbox" id="catSingle"> single-select</label>
+      <button class="primary">Add category</button>
+    </form>
+  </section>
+
+  <!-- PUBLISH -->
+  <section id="tab-publish" class="tab">
+    <h2>Publish</h2>
+    <div id="pubStatus"></div>
+    <ol class="steps">
+      <li><button id="syncBtn" class="primary">1 · Sync images to Cloudflare R2</button>
+          <span id="syncStatus"></span></li>
+      <li><button id="exportBtn" class="primary">2 · Export library.json</button>
+          <span id="exportStatus"></span></li>
+      <li>3 · Commit &amp; push:
+        <pre>git add docs/data/library.json
+git commit -m "Update library"
+git push</pre></li>
+    </ol>
+  </section>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<script src="/static/admin.js"></script>
+</body>
+</html>
