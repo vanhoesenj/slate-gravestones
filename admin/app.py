@@ -25,7 +25,7 @@ def index():
 
 @app.get("/media/<int:photo_id>/<name>")
 def media(photo_id, name):
-    if name not in ("thumb.jpg", "disp.jpg"):
+    if name not in ("thumb.jpg", "disp.jpg", "enh.jpg"):
         abort(404)
     return send_from_directory(images.photo_dir(photo_id), name)
 
@@ -375,8 +375,8 @@ def r2_sync():
     for row in rows:
         pid = row["id"]
         try:
-            thumb, disp = images.derivative_paths(pid)
-            r2.upload_photo(pid, thumb, disp)
+            thumb, disp, enh = images.derivative_paths(pid)
+            r2.upload_photo(pid, thumb, disp, enh)
             con.execute("UPDATE photos SET r2_synced=1 WHERE id=?", (pid,))
             con.commit()
             done.append(pid)

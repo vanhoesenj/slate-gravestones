@@ -45,7 +45,28 @@ def photo_dir(photo_id):
 
 def derivative_paths(photo_id):
     d = photo_dir(photo_id)
-    return os.path.join(d, "thumb.jpg"), os.path.join(d, "disp.jpg")
+    return (os.path.join(d, "thumb.jpg"), os.path.join(d, "disp.jpg"),
+            os.path.join(d, "enh.jpg"))
+
+
+def _enhance(pil_img):
+    """CLAHE on the lightness channel + unsharp mask: pulls shallow carving
+    and worn inscriptions out of flat lighting while keeping the slate color."""
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        raise RuntimeError(
+            "OpenCV is required for enhanced derivatives — run: "
+            "pip3 install opencv-python-headless")
+    bgr = cv2.cvtColor(np.array(pil_img.convert("RGB")), cv2.COLOR_RGB2BGR)
+    lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    l = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(l)
+    bgr = cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
+    blur = cv2.GaussianBlur(bgr, (0, 0), 3)
+    sharp = cv2.addWeighted(bgr, 1.6, blur, -0.6, 0)
+    return Image.fromarray(cv2.cvtColor(sharp, cv2.COLOR_BGR2RGB))
 
 
 def make_derivatives(src_path, photo_id):
@@ -59,4 +80,7 @@ def make_derivatives(src_path, photo_id):
         copy.thumbnail((edge, edge), Image.LANCZOS)
         copy.save(os.path.join(d, name), "JPEG", quality=q, optimize=True,
                   progressive=True)
+    disp = Image.open(os.path.join(d, "disp.jpg"))
+    _enhance(disp).save(os.path.join(d, "enh.jpg"), "JPEG", quality=85,
+                        optimize=True, progressive=True)
     return w, h

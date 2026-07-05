@@ -253,10 +253,15 @@ async function openStone(id) {
        <a href="/media/${p.id}/disp.jpg" target="_blank"><img src="/media/${p.id}/thumb.jpg"></a>
        <div class="tools">
          <button data-act="primary" data-id="${p.id}" title="Set as primary">★</button>
+         <button data-act="enh" data-id="${p.id}" title="View enhanced (carving/inscription)">◐</button>
          <button data-act="del" data-id="${p.id}" title="Remove photo">✕</button>
        </div></div>`).join("");
   $("#sdPhotos").querySelectorAll("button").forEach((b) =>
     b.addEventListener("click", async () => {
+      if (b.dataset.act === "enh") {
+        window.open(`/media/${b.dataset.id}/enh.jpg`, "_blank");
+        return;
+      }
       if (b.dataset.act === "primary")
         await api(`/api/photos/${b.dataset.id}/primary`, { method: "PUT" });
       else if (confirm("Remove this photo from the library?"))

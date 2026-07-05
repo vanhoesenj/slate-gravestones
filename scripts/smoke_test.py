@@ -80,10 +80,10 @@ def main():
     # rescan should find nothing new
     assert len(call("get", f"/api/import/scan?dir={src}")["files"]) == 0
 
-    # derivative files exist
+    # derivative files exist (thumb, display, enhanced)
     import images
-    t, d = images.derivative_paths(s1["photos"][0])
-    assert os.path.exists(t) and os.path.exists(d)
+    t, d, e = images.derivative_paths(s1["photos"][0])
+    assert os.path.exists(t) and os.path.exists(d) and os.path.exists(e)
     im = Image.open(d)
     assert max(im.size) == 2000, im.size
     print("derivatives ok:", im.size)

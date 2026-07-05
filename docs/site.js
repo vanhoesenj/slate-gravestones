@@ -273,13 +273,31 @@ function openLightbox(id) {
   const s = DB.stones.find((x) => x.id === id);
   const c = cemById[s.cem];
   $("#lbPhotos").innerHTML = s.photos.map((p) =>
-    `<img loading="lazy" src="${imgUrl(p.id, "disp")}" alt="">`).join("");
+    `<img loading="lazy" src="${imgUrl(p.id, "disp")}" data-id="${p.id}"
+       data-v="disp" title="Click to flip between original and enhanced" alt="">`).join("");
+  $("#lbPhotos").querySelectorAll("img").forEach((im) => {
+    im.addEventListener("click", () => {
+      const v = im.dataset.v === "disp" ? "enh" : "disp";
+      im.dataset.v = v;
+      im.src = imgUrl(+im.dataset.id, v);
+      im.classList.toggle("enhanced", v === "enh");
+    });
+    im.addEventListener("error", () => {   // photo predates enhancement
+      if (im.dataset.v === "enh") {
+        im.dataset.v = "disp";
+        im.src = imgUrl(+im.dataset.id, "disp");
+        im.classList.remove("enhanced");
+      }
+    });
+  });
   const byCat = {};
   for (const t of s.tags) {
     const tag = tagById[t];
     if (tag) (byCat[tag.cat] = byCat[tag.cat] || []).push(tag.name);
   }
   $("#lbMeta").innerHTML = `
+    <div class="lbhint">◐ Click a photo to flip between the original and an
+      enhanced view that brings out carving and inscriptions.</div>
     <h3>${esc(s.title) || "Unnamed gravestone"}${yearsOf(s)}</h3>
     <div class="where">${esc(s.dateText || "")}${s.dateText ? " — " : ""}
       ${esc(c.name)}, ${esc([c.city, c.state, c.country].filter(Boolean).join(", "))}</div>

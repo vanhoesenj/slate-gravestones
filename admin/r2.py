@@ -43,9 +43,12 @@ def client():
     ), cfg["bucket"]
 
 
-def upload_photo(photo_id, thumb_path, disp_path):
+def upload_photo(photo_id, thumb_path, disp_path, enh_path=None):
     s3, bucket = client()
-    for path, name in ((thumb_path, "thumb.jpg"), (disp_path, "disp.jpg")):
+    files = [(thumb_path, "thumb.jpg"), (disp_path, "disp.jpg")]
+    if enh_path and os.path.exists(enh_path):
+        files.append((enh_path, "enh.jpg"))
+    for path, name in files:
         s3.upload_file(path, bucket, f"img/{photo_id}/{name}",
                        ExtraArgs={"ContentType": "image/jpeg",
                                   "CacheControl": "public, max-age=31536000"})

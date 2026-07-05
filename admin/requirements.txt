@@ -1,5 +1,6 @@
 flask>=3.0
 pillow>=10.0
 boto3>=1.34
+opencv-python-headless>=4.9
 # Only needed if importing iPhone HEIC files directly:
 # pillow-heif>=0.16

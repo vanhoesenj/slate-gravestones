@@ -100,7 +100,9 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
   width: 30px; height: 30px; cursor: pointer; font-family: inherit; }
 #lbClose:hover { background: var(--slate-dark); }
 #lbPhotos { display: flex; gap: 10px; overflow-x: auto; }
-#lbPhotos img { max-height: 62vh; border-radius: 6px; }
+#lbPhotos img { max-height: 62vh; border-radius: 6px; cursor: pointer; }
+#lbPhotos img.enhanced { outline: 3px solid var(--harbour); }
+.lbhint { font-size: 12.5px; color: var(--ordovician); margin-bottom: 8px; }
 #lbMeta { margin-top: 12px; }
 #lbMeta h3 { margin: 0 0 4px; font-family: "Jost", sans-serif; font-weight: 600;
   color: var(--slate-dark); }
