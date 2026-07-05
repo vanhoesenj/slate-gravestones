@@ -24,7 +24,17 @@ function filteredStones() {
     if (F.cemetery && String(s.cem) !== F.cemetery) return false;
     if (F.yearMin != null && (s.year == null || s.year < F.yearMin)) return false;
     if (F.yearMax != null && (s.year == null || s.year > F.yearMax)) return false;
-    for (const t of F.tags) if (!s.tags.includes(t)) return false;
+    // OR within a category, AND across categories:
+    // urn + willow = either; urn + Ogee Top = urn on an ogee-top marker
+    if (F.tags.size) {
+      const byCat = {};
+      for (const t of F.tags) {
+        const cat = tagById[t]?.cat;
+        (byCat[cat] = byCat[cat] || []).push(t);
+      }
+      for (const ids of Object.values(byCat))
+        if (!ids.some((t) => s.tags.includes(t))) return false;
+    }
     return true;
   });
 }
@@ -128,7 +138,7 @@ function initMap() {
         .setLngLat(e.features[0].geometry.coordinates)
         .setHTML(`<strong>${esc(p.name)}</strong><br>
           ${esc([p.city, p.state].filter(Boolean).join(", "))}<br>
-          ${p.count} stone(s) shown ·
+          ${p.count} gravestone(s) shown ·
           <a href="#" onclick="setCem(${p.id});return false">filter to this cemetery</a>`)
         .addTo(map);
     });
@@ -191,7 +201,7 @@ function renderTagChart(stones) {
   const data = {
     labels: usedTags.map((t) => t.name),
     datasets: single
-      ? [{ label: "stones", data: usedTags.map((t) => counts["All"]?.[t.id] || 0),
+      ? [{ label: "gravestones", data: usedTags.map((t) => counts["All"]?.[t.id] || 0),
            backgroundColor: chartColors(usedTags.length) }]
       : groups.map((g, i) => ({
           label: g, data: usedTags.map((t) => counts[g][t.id] || 0),
@@ -206,7 +216,7 @@ function renderTagChart(stones) {
       plugins: { legend: { display: !single, position: "bottom",
                            labels: { boxWidth: 12, font: { size: 11 } } },
                  title: { display: true,
-                   text: `${catById[catId].name} — ${stones.length} stones` } },
+                   text: `${catById[catId].name} — ${stones.length} gravestones` } },
       scales: { x: { stacked: !single, ticks: { precision: 0 } },
                 y: { stacked: !single, ticks: { font: { size: 11 } } } },
     },
@@ -221,11 +231,11 @@ function renderDecadeChart(stones) {
   decadeChart = new Chart($("#decadeChart"), {
     type: "bar",
     data: { labels: decades.map((d) => d + "s"),
-            datasets: [{ label: "stones", data: decades.map((d) => per[d]),
+            datasets: [{ label: "gravestones", data: decades.map((d) => per[d]),
                          backgroundColor: "#8c7a4e" }] },
     options: { maintainAspectRatio: false, responsive: true,
       plugins: { legend: { display: false },
-                 title: { display: true, text: "Stones by decade" } },
+                 title: { display: true, text: "Gravestones by decade" } },
       scales: { y: { ticks: { precision: 0 } } } },
   });
 }
@@ -235,7 +245,7 @@ function renderDecadeChart(stones) {
 /* ---------- gallery & lightbox ---------- */
 function renderGallery(stones) {
   $("#galleryHead").textContent =
-    `${stones.length} stone${stones.length === 1 ? "" : "s"}`;
+    `${stones.length} gravestone${stones.length === 1 ? "" : "s"}`;
   const shown = stones.slice(0, galleryShown);
   $("#gallery").innerHTML = shown.map((s) => {
     const c = cemById[s.cem];
@@ -295,7 +305,7 @@ function update() {
     fitToData();
   }
   $("#counts").textContent =
-    `${DB.stones.length} stones · ${DB.cemeteries.filter((c) => c.stones).length} cemeteries`;
+    `${DB.stones.length} gravestones · ${DB.cemeteries.filter((c) => c.stones).length} cemeteries`;
 }
 
 /* ---------- init ---------- */

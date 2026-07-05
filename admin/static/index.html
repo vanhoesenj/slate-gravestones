@@ -13,7 +13,7 @@
   <nav id="tabs">
     <button data-tab="cemeteries" class="active">Cemeteries</button>
     <button data-tab="import">Import</button>
-    <button data-tab="stones">Stones</button>
+    <button data-tab="stones">Gravestones</button>
     <button data-tab="tags">Tags</button>
     <button data-tab="publish">Publish</button>
   </nav>
@@ -67,12 +67,12 @@
     </div>
     <div class="btnrow">
       <label>Cemetery: <select id="importCem"></select></label>
-      <button id="impOnePer" disabled>Import selected — one stone per photo</button>
-      <button id="impGroup" disabled>Import selected as ONE stone</button>
+      <button id="impOnePer" disabled>Import selected — one gravestone per photo</button>
+      <button id="impGroup" disabled>Import selected as ONE gravestone</button>
       <span id="impStatus"></span>
     </div>
-    <p class="hint">Select photos below. Use “one stone per photo” for the common case;
-      select several shots of the same marker and use “as ONE stone” to group them.</p>
+    <p class="hint">Select photos below. Use “one gravestone per photo” for the common case;
+      select several shots of the same marker and use “as ONE gravestone” to group them.</p>
     <div id="importGrid" class="photogrid"></div>
   </section>
 
@@ -80,7 +80,7 @@
   <section id="tab-stones" class="tab">
     <div class="split">
       <div class="pane">
-        <h2>Stones</h2>
+        <h2>Gravestones</h2>
         <div class="btnrow">
           <select id="stoneCemFilter"><option value="">All cemeteries</option></select>
           <label class="chk"><input type="checkbox" id="stoneUntagged"> Untagged only</label>
@@ -93,7 +93,7 @@
           <h2 id="sdTitleHead"></h2>
           <div id="sdPhotos" class="photostrip"></div>
           <form id="sdForm">
-            <label>Name on stone <input id="sdTitle"></label>
+            <label>Name on gravestone <input id="sdTitle"></label>
             <div class="grid2">
               <label>Year <input id="sdYear" type="number" min="1600" max="2100"></label>
               <label>Date as inscribed <input id="sdDate" placeholder="e.g. Mar. 4, 1847"></label>
@@ -102,13 +102,13 @@
             <label>Notes <textarea id="sdNotes" rows="2"></textarea></label>
             <div id="sdTagGroups"></div>
             <div class="btnrow">
-              <button type="submit" class="primary">Save stone</button>
-              <button type="button" id="sdDelete" class="danger">Delete stone</button>
+              <button type="submit" class="primary">Save gravestone</button>
+              <button type="button" id="sdDelete" class="danger">Delete gravestone</button>
               <span id="sdStatus"></span>
             </div>
           </form>
         </div>
-        <p id="stoneHint" class="hint">Select a stone to edit it.</p>
+        <p id="stoneHint" class="hint">Select a gravestone to edit it.</p>
       </div>
     </div>
   </section>
@@ -117,8 +117,8 @@
   <section id="tab-tags" class="tab">
     <h2>Tag categories</h2>
     <p class="hint">Categories group tags (Shape, Iconography, …). “Single” categories
-      allow one tag per stone; others allow many. New categories and tags appear
-      immediately in the stone editor and, after publishing, as site filters.</p>
+      allow one tag per gravestone; others allow many. New categories and tags appear
+      immediately in the gravestone editor and, after publishing, as site filters.</p>
     <div id="catList"></div>
     <form id="catForm" class="btnrow">
       <input id="catName" placeholder="New category name" required>

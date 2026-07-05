@@ -116,7 +116,7 @@ def del_cemetery(cid):
                     (cid,)).fetchone()["c"]
     if n:
         con.close()
-        return jsonify({"error": f"Cemetery has {n} stones; move or delete them first."}), 400
+        return jsonify({"error": f"Cemetery has {n} gravestones; move or delete them first."}), 400
     con.execute("DELETE FROM cemeteries WHERE id=?", (cid,))
     con.commit()
     con.close()

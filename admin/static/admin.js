@@ -25,7 +25,7 @@ document.querySelectorAll("#tabs button").forEach((b) =>
 async function refreshSummary() {
   const s = await api("/api/summary");
   $("#summary").textContent =
-    `${s.cemeteries} cemeteries · ${s.stones} stones · ${s.photos} photos · ` +
+    `${s.cemeteries} cemeteries · ${s.stones} gravestones · ${s.photos} photos · ` +
     `${s.untagged} untagged · ${s.unsynced} not on R2`;
   if (!$("#importDir").value && s.source_dir) $("#importDir").value = s.source_dir;
   window._sum = s;
@@ -58,7 +58,7 @@ async function loadCemeteries() {
   cemeteries = await api("/api/cemeteries");
   $("#cemList").innerHTML = cemeteries.map((c) =>
     `<li data-id="${c.id}"><span>${esc(c.name)}</span>
-     <span class="n">${esc(c.state || c.country)} · ${c.stones} stones</span></li>`).join("");
+     <span class="n">${esc(c.state || c.country)} · ${c.stones} gravestones</span></li>`).join("");
   const opts = cemeteries.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
   $("#importCem").innerHTML = opts;
   $("#sdCem").innerHTML = opts;
@@ -191,7 +191,7 @@ async function loadStones() {
        ${s.thumb ? `<img loading="lazy" src="/media/${s.thumb}/thumb.jpg">` : ""}
        <span class="badge ${s.ntags ? "" : "warn"}">${s.ntags ? s.ntags + " tags" : "untagged"}</span>
        <div class="cap">#${s.id} ${esc(s.title || "")} ${s.year || ""} · ${esc(s.cemetery)}</div>
-     </div>`).join("") || "<p class='hint'>No stones match.</p>";
+     </div>`).join("") || "<p class='hint'>No gravestones match.</p>";
   document.querySelectorAll("#stoneGrid .card").forEach((el) =>
     el.addEventListener("click", () => openStone(+el.dataset.id)));
 }
@@ -206,7 +206,7 @@ async function openStone(id) {
   curStone = id;
   $("#stoneHint").classList.add("hidden");
   $("#stoneDetail").classList.remove("hidden");
-  $("#sdTitleHead").textContent = `Stone #${id}`;
+  $("#sdTitleHead").textContent = `Gravestone #${id}`;
   $("#sdTitle").value = s.title || "";
   $("#sdYear").value = s.year ?? "";
   $("#sdDate").value = s.date_text || "";
@@ -281,7 +281,7 @@ $("#sdForm").addEventListener("submit", async (e) => {
   loadStones(); refreshSummary();
 });
 $("#sdDelete").addEventListener("click", async () => {
-  if (!confirm("Delete this stone and its photos from the library?")) return;
+  if (!confirm("Delete this gravestone and its photos from the library?")) return;
   await api(`/api/stones/${curStone}`, { method: "DELETE" });
   $("#stoneDetail").classList.add("hidden");
   $("#stoneHint").classList.remove("hidden");
