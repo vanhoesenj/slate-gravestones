@@ -278,16 +278,19 @@ function openLightbox(id) {
   $("#lbPhotos").querySelectorAll("img").forEach((im) => {
     im.addEventListener("click", () => {
       const v = im.dataset.v === "disp" ? "enh" : "disp";
-      im.dataset.v = v;
-      im.src = imgUrl(+im.dataset.id, v);
-      im.classList.toggle("enhanced", v === "enh");
-    });
-    im.addEventListener("error", () => {   // photo predates enhancement
-      if (im.dataset.v === "enh") {
-        im.dataset.v = "disp";
-        im.src = imgUrl(+im.dataset.id, "disp");
-        im.classList.remove("enhanced");
-      }
+      const url = imgUrl(+im.dataset.id, v);
+      // preload, and only swap once the new version has actually arrived —
+      // never leaves a broken/empty image on screen
+      const pre = new Image();
+      pre.onload = () => {
+        im.src = url;
+        im.dataset.v = v;
+        im.classList.toggle("enhanced", v === "enh");
+      };
+      pre.onerror = () => {
+        im.title = "Enhanced version not available for this photo";
+      };
+      pre.src = url;
     });
   });
   const byCat = {};
