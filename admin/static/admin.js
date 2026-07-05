@@ -135,10 +135,23 @@ $("#scanBtn").addEventListener("click", async () => {
     const r = await api("/api/import/scan?dir=" + encodeURIComponent($("#importDir").value));
     scanFiles = r.files; selected.clear();
     $("#impStatus").textContent = `${r.files.length} new photo(s) found`;
-    $("#importGrid").innerHTML = r.files.map((f, i) =>
-      `<div class="card" data-i="${i}">
-         <img loading="lazy" src="/orig?path=${encodeURIComponent(f.path)}">
-         <div class="cap" title="${esc(f.rel)}">${esc(f.rel)}</div></div>`).join("");
+    // group by subfolder (e.g. one folder per cemetery)
+    const groups = {};
+    r.files.forEach((f, i) => {
+      const dir = f.rel.includes("/") ? f.rel.slice(0, f.rel.lastIndexOf("/")) : "";
+      (groups[dir] = groups[dir] || []).push(i);
+    });
+    $("#importGrid").innerHTML = Object.keys(groups).sort().map((dir) => `
+      <div class="impdir">
+        <span>${esc(dir) || "(top level)"}</span>
+        <button class="seldir" data-dir="${esc(dir)}">select folder</button>
+      </div>` +
+      groups[dir].map((i) => {
+        const f = scanFiles[i];
+        return `<div class="card" data-i="${i}">
+          <img loading="lazy" src="/orig?path=${encodeURIComponent(f.path)}">
+          <div class="cap" title="${esc(f.rel)}">${esc(f.name)}</div></div>`;
+      }).join("")).join("");
     document.querySelectorAll("#importGrid .card").forEach((el) =>
       el.addEventListener("click", () => {
         const i = +el.dataset.i;
@@ -146,9 +159,31 @@ $("#scanBtn").addEventListener("click", async () => {
         el.classList.toggle("sel");
         updateImpButtons();
       }));
+    document.querySelectorAll("#importGrid .seldir").forEach((b) =>
+      b.addEventListener("click", () => {
+        const idx = groups[b.dataset.dir];
+        const allOn = idx.every((i) => selected.has(i));
+        idx.forEach((i) => allOn ? selected.delete(i) : selected.add(i));
+        document.querySelectorAll("#importGrid .card").forEach((el) =>
+          el.classList.toggle("sel", selected.has(+el.dataset.i)));
+        if (!allOn) matchCemetery(b.dataset.dir);
+        updateImpButtons();
+      }));
     updateImpButtons();
   } catch (err) { $("#impStatus").textContent = err.message; }
 });
+function matchCemetery(dir) {
+  // if the folder name matches a cemetery name, pre-select it in the dropdown
+  const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const d = norm(dir.split("/").pop());
+  if (!d) return;
+  const hit = cemeteries.find((c) => {
+    const n = norm(c.name);
+    return n === d || n.includes(d) || d.includes(n);
+  });
+  if (hit) $("#importCem").value = hit.id;
+}
+
 function updateImpButtons() {
   $("#impOnePer").disabled = selected.size === 0 || !$("#importCem").value;
   $("#impGroup").disabled = selected.size < 2 || !$("#importCem").value;
