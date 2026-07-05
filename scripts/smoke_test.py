@@ -29,6 +29,9 @@ def make_test_photos(d, n=3):
 
 
 def main():
+    assert os.environ.get("SG_DB"), \
+        "Run with a throwaway DB:  SG_DB=/tmp/t.db python3 scripts/smoke_test.py"
+
     # temp config so scan + publish work
     cfg_path = os.path.join(ROOT, "config.json")
     had_cfg = os.path.exists(cfg_path)
@@ -37,6 +40,11 @@ def main():
         with open(cfg_path, "w") as f:
             json.dump({"photo_source_dir": src,
                        "r2": {"public_base_url": "https://example.test"}}, f)
+
+    # publishing during the test overwrites docs/data/library.json — keep the
+    # real one safe and restore it afterwards
+    lib_path = os.path.join(ROOT, "docs", "data", "library.json")
+    lib_backup = open(lib_path).read() if os.path.exists(lib_path) else None
 
     import app as appmod
     c = appmod.app.test_client()
@@ -105,7 +113,7 @@ def main():
     print("publish:", pub)
     with open(pub["path"]) as f:
         data = json.load(f)
-    assert data["imageBase"] == "https://example.test"
+    assert data["imageBase"], "imageBase should come from config.json"
     assert len(data["stones"]) == 2
     assert data["stones"][0]["photos"][0]["id"] == s1["photos"][1]  # primary first
     assert any(t["name"] == "Zerubbabel Collins" for t in data["tags"])
@@ -126,10 +134,14 @@ def main():
     con.execute("DELETE FROM categories WHERE id=?", (newcat["id"],))
     con.commit()
     con.close()
-    try:
-        os.remove(pub["path"])
-    except OSError:
-        pass  # leftover library.json is harmless; next publish overwrites it
+    if lib_backup is not None:
+        with open(lib_path, "w") as f:
+            f.write(lib_backup)  # restore the real export
+    else:
+        try:
+            os.remove(pub["path"])
+        except OSError:
+            pass
     shutil.rmtree(src, ignore_errors=True)
     if not had_cfg:
         os.remove(cfg_path)

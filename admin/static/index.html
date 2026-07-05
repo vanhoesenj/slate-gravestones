@@ -33,7 +33,7 @@
           <label>Name <input id="cemName" required></label>
           <div class="grid3">
             <label>City/Town <input id="cemCity"></label>
-            <label>State <input id="cemState"></label>
+            <label>State / Province / Region <input id="cemState"></label>
             <label>Country <input id="cemCountry" value="United States"></label>
           </div>
           <div class="grid2">
@@ -94,8 +94,9 @@
           <div id="sdPhotos" class="photostrip"></div>
           <form id="sdForm">
             <label>Name on gravestone <input id="sdTitle"></label>
-            <div class="grid2">
-              <label>Year <input id="sdYear" type="number" min="1600" max="2100"></label>
+            <div class="grid3">
+              <label>Birth year <input id="sdBirth" type="number" min="1500" max="2100"></label>
+              <label>Death year <input id="sdYear" type="number" min="1500" max="2100"></label>
               <label>Date as inscribed <input id="sdDate" placeholder="e.g. Mar. 4, 1847"></label>
             </div>
             <label>Cemetery <select id="sdCem"></select></label>

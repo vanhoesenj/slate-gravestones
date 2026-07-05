@@ -77,6 +77,7 @@ button:disabled { opacity: .45; cursor: default; }
   font-size: 13px; margin: 0 6px 6px 0; }
 #catList .tagrow .use { color: var(--muted); font-size: 11px; }
 #catList .tagrow button { border: none; padding: 0 4px; font-size: 12px; color: var(--danger); }
+#catList .tagrow button.ren { color: var(--accent); }
 #geoResults div { padding: 6px 8px; border-bottom: 1px solid var(--line);
   cursor: pointer; font-size: 13px; }
 #geoResults div:hover { background: var(--bg); }

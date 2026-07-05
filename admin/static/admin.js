@@ -208,6 +208,7 @@ async function openStone(id) {
   $("#stoneDetail").classList.remove("hidden");
   $("#sdTitleHead").textContent = `Gravestone #${id}`;
   $("#sdTitle").value = s.title || "";
+  $("#sdBirth").value = s.birth_year ?? "";
   $("#sdYear").value = s.year ?? "";
   $("#sdDate").value = s.date_text || "";
   $("#sdNotes").value = s.notes || "";
@@ -270,6 +271,7 @@ $("#sdForm").addEventListener("submit", async (e) => {
   await api(`/api/stones/${curStone}`, { method: "PUT", body: {
     title: $("#sdTitle").value,
     year: parseInt($("#sdYear").value) || null,
+    birth_year: parseInt($("#sdBirth").value) || null,
     date_text: $("#sdDate").value,
     notes: $("#sdNotes").value,
     cemetery_id: +$("#sdCem").value,
@@ -296,12 +298,27 @@ function renderCatAdmin() {
       <h3>${esc(c.name)} <small class="hint">${c.single ? "single-select" : "multi-select"}</small></h3>
       ${c.tags.map((t) =>
         `<span class="tagrow">${esc(t.name)} <span class="use">${t.used}</span>
-         ${t.used ? "" : `<button data-id="${t.id}" title="Delete unused tag">✕</button>`}</span>`).join("")}
+         <button class="ren" data-id="${t.id}" data-name="${esc(t.name)}" title="Rename tag">✎</button>
+         <button class="del" data-id="${t.id}" data-used="${t.used}" title="Delete tag">✕</button></span>`).join("")}
       <span class="tagrow"><button class="addtag" data-cat="${c.id}">+ add tag</button></span>
     </div>`).join("");
-  $("#catList").querySelectorAll("button[data-id]").forEach((b) =>
+  $("#catList").querySelectorAll("button.ren").forEach((b) =>
     b.addEventListener("click", async () => {
-      try { await api(`/api/tags/${b.dataset.id}`, { method: "DELETE" }); loadCats(); }
+      const name = prompt("Rename tag (updates it everywhere):", b.dataset.name);
+      if (!name || name === b.dataset.name) return;
+      try { await api(`/api/tags/${b.dataset.id}`, { method: "PUT",
+        body: { name } }); loadCats(); }
+      catch (err) { alert(err.message); }
+    }));
+  $("#catList").querySelectorAll("button.del").forEach((b) =>
+    b.addEventListener("click", async () => {
+      const used = +b.dataset.used;
+      const msg = used
+        ? `This tag is on ${used} gravestone(s). Delete it and remove it from all of them?`
+        : "Delete this tag?";
+      if (!confirm(msg)) return;
+      try { await api(`/api/tags/${b.dataset.id}?force=1`, { method: "DELETE" });
+        loadCats(); }
       catch (err) { alert(err.message); }
     }));
   $("#catList").querySelectorAll(".addtag").forEach((b) =>

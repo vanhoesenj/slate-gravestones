@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS stones (
     id INTEGER PRIMARY KEY,
     cemetery_id INTEGER NOT NULL REFERENCES cemeteries(id) ON DELETE CASCADE,
     title TEXT DEFAULT '',            -- e.g. name on the stone
-    year INTEGER,                     -- principal date on the stone (year)
+    year INTEGER,                     -- death year (principal date; drives charts)
+    birth_year INTEGER,
     date_text TEXT DEFAULT '',        -- full date as inscribed, free text
     notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
@@ -100,6 +101,11 @@ def init():
     os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
     con = connect()
     con.executescript(SCHEMA)
+    # migrations for databases created before these columns existed
+    cols = [r["name"] for r in con.execute("PRAGMA table_info(stones)")]
+    if "birth_year" not in cols:
+        con.execute("ALTER TABLE stones ADD COLUMN birth_year INTEGER")
+        con.commit()
     # Seed vocabularies only if empty
     if con.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0:
         con.execute(

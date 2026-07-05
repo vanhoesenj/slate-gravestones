@@ -187,9 +187,10 @@ def del_tag(tid):
     con = db.connect()
     used = con.execute("SELECT COUNT(*) c FROM stone_tags WHERE tag_id=?",
                        (tid,)).fetchone()["c"]
-    if used:
+    if used and request.args.get("force") != "1":
         con.close()
-        return jsonify({"error": f"Tag is used on {used} stones."}), 400
+        return jsonify({"error": f"Tag is used on {used} gravestones."}), 400
+    con.execute("DELETE FROM stone_tags WHERE tag_id=?", (tid,))
     con.execute("DELETE FROM tags WHERE id=?", (tid,))
     con.commit()
     con.close()
@@ -246,10 +247,10 @@ def edit_stone(sid):
     d = request.json
     con = db.connect()
     con.execute(
-        "UPDATE stones SET title=?, year=?, date_text=?, notes=?, cemetery_id=? "
-        "WHERE id=?",
-        (d.get("title", ""), d.get("year"), d.get("date_text", ""),
-         d.get("notes", ""), d["cemetery_id"], sid))
+        "UPDATE stones SET title=?, year=?, birth_year=?, date_text=?, notes=?, "
+        "cemetery_id=? WHERE id=?",
+        (d.get("title", ""), d.get("year"), d.get("birth_year"),
+         d.get("date_text", ""), d.get("notes", ""), d["cemetery_id"], sid))
     con.commit()
     con.close()
     return jsonify({"ok": True})

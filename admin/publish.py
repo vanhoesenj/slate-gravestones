@@ -27,8 +27,8 @@ def export():
         "stones": [],
     }
     stones = con.execute(
-        "SELECT id, cemetery_id AS cem, title, year, date_text AS dateText "
-        "FROM stones ORDER BY id").fetchall()
+        "SELECT id, cemetery_id AS cem, title, year, birth_year AS birth, "
+        "date_text AS dateText FROM stones ORDER BY id").fetchall()
     tags_by_stone = {}
     for r in con.execute("SELECT stone_id, tag_id FROM stone_tags"):
         tags_by_stone.setdefault(r["stone_id"], []).append(r["tag_id"])

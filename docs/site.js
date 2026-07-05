@@ -14,6 +14,11 @@ const PALETTE = ["#35606e", "#8c7a4e", "#9b3b7a", "#b3552f", "#4a7c59",
   "#6d8196", "#a68c2f", "#7a5b8c", "#b0763b", "#54838c", "#8c4e5b", "#5b8c7a"];
 
 const imgUrl = (photoId, kind) => `${IMG}/img/${photoId}/${kind}.jpg`;
+// " · 1745–1794", " · d. 1794", " · b. 1745", or ""
+const yearsOf = (s) =>
+  s.birth && s.year ? ` · ${s.birth}–${s.year}` :
+  s.year ? ` · d. ${s.year}` :
+  s.birth ? ` · b. ${s.birth}` : "";
 
 /* ---------- filtering ---------- */
 function filteredStones() {
@@ -251,7 +256,7 @@ function renderGallery(stones) {
     const c = cemById[s.cem];
     return `<div class="stone" data-id="${s.id}">
       <img loading="lazy" src="${imgUrl(s.photos[0].id, "thumb")}" alt="">
-      <div class="cap">${esc(s.title) || "Unnamed"}${s.year ? " · " + s.year : ""}
+      <div class="cap">${esc(s.title) || "Unnamed"}${yearsOf(s)}
         <span class="where">${esc(c.name)}, ${esc(c.state || c.country)}</span></div>
     </div>`;
   }).join("") +
@@ -275,7 +280,7 @@ function openLightbox(id) {
     if (tag) (byCat[tag.cat] = byCat[tag.cat] || []).push(tag.name);
   }
   $("#lbMeta").innerHTML = `
-    <h3>${esc(s.title) || "Unnamed stone"}${s.year ? " · " + s.year : ""}</h3>
+    <h3>${esc(s.title) || "Unnamed gravestone"}${yearsOf(s)}</h3>
     <div class="where">${esc(s.dateText || "")}${s.dateText ? " — " : ""}
       ${esc(c.name)}, ${esc([c.city, c.state, c.country].filter(Boolean).join(", "))}</div>
     <div class="tags">${DB.categories.map((cat) =>
