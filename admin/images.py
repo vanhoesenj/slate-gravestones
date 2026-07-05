@@ -4,7 +4,9 @@ which the admin UI serves locally and the R2 sync uploads."""
 import os
 from PIL import Image, ImageOps
 
-MEDIA_DIR = os.path.join(os.path.dirname(__file__), "media")
+# Override with SG_MEDIA env var (used by tests so they never touch real media)
+MEDIA_DIR = os.environ.get("SG_MEDIA") or os.path.join(
+    os.path.dirname(__file__), "media")
 THUMB_EDGE = 480     # long edge, px
 DISPLAY_EDGE = 2000  # long edge, px
 

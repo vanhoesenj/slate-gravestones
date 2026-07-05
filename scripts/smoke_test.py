@@ -31,6 +31,9 @@ def make_test_photos(d, n=3):
 def main():
     assert os.environ.get("SG_DB"), \
         "Run with a throwaway DB:  SG_DB=/tmp/t.db python3 scripts/smoke_test.py"
+    # keep generated thumbnails in a throwaway dir so test cleanup can NEVER
+    # delete real media (photo IDs in the test DB overlap with real ones)
+    os.environ["SG_MEDIA"] = tempfile.mkdtemp(prefix="sg_media_")
 
     # temp config so scan + publish work
     cfg_path = os.path.join(ROOT, "config.json")

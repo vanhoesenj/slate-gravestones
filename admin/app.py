@@ -351,6 +351,7 @@ def do_import():
                         (w, h, images.exif_taken(p), pid))
             imported.append(pid)
         except Exception as e:
+            con.execute("DELETE FROM photos WHERE id=?", (pid,))
             errors.append({"path": p, "error": str(e)})
     if not imported:
         con.execute("DELETE FROM stones WHERE id=?", (sid,))
