@@ -100,8 +100,32 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
   width: 30px; height: 30px; cursor: pointer; font-family: inherit; }
 #lbClose:hover { background: var(--slate-dark); }
 #lbPhotos { display: flex; gap: 10px; overflow-x: auto; }
-#lbPhotos img { max-height: 62vh; border-radius: 6px; cursor: pointer; }
+.lbph { position: relative; flex: 0 0 auto; }
+#lbPhotos img { max-height: 62vh; border-radius: 6px; cursor: pointer;
+  display: block; }
 #lbPhotos img.enhanced { outline: 3px solid var(--harbour); }
+.zoomBtn { position: absolute; top: 8px; right: 8px; border: none;
+  background: rgba(43,36,51,.65); color: var(--paper); border-radius: 999px;
+  width: 32px; height: 32px; font-size: 16px; cursor: pointer; }
+.zoomBtn:hover { background: var(--slate-mid); }
+
+/* fullscreen zoom viewer */
+#zoomview { position: fixed; inset: 0; background: #17131c; z-index: 100;
+  overflow: hidden; touch-action: none; cursor: grab; }
+#zoomview.hidden { display: none; }
+#zvImg { position: absolute; top: 0; left: 0; transform-origin: 0 0;
+  will-change: transform; user-select: none; }
+#zvBar { position: fixed; top: 14px; right: 14px; display: flex; gap: 8px;
+  z-index: 101; }
+#zvBar button { border: 1px solid rgba(255,255,255,.35);
+  background: rgba(43,36,51,.75); color: var(--paper); border-radius: 999px;
+  min-width: 38px; height: 38px; font-size: 16px; cursor: pointer;
+  font-family: inherit; }
+#zvBar button:hover { background: var(--slate-mid); }
+#zvBar button.on { background: var(--harbour); border-color: var(--harbour); }
+#zvHint { position: fixed; bottom: 12px; left: 0; right: 0; text-align: center;
+  color: #cfc6e0; font-size: 12.5px; z-index: 101; pointer-events: none;
+  text-shadow: 0 1px 3px #000; }
 .lbhint { font-size: 12.5px; color: var(--ordovician); margin-bottom: 8px; }
 #lbMeta { margin-top: 12px; }
 #lbMeta h3 { margin: 0 0 4px; font-family: "Jost", sans-serif; font-weight: 600;

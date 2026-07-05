@@ -273,8 +273,17 @@ function openLightbox(id) {
   const s = DB.stones.find((x) => x.id === id);
   const c = cemById[s.cem];
   $("#lbPhotos").innerHTML = s.photos.map((p) =>
-    `<img loading="lazy" src="${imgUrl(p.id, "disp")}" data-id="${p.id}"
-       data-v="disp" title="Click to flip between original and enhanced" alt="">`).join("");
+    `<div class="lbph">
+       <img loading="lazy" src="${imgUrl(p.id, "disp")}" data-id="${p.id}"
+         data-v="disp" title="Click to flip between original and enhanced" alt="">
+       <button class="zoomBtn" data-id="${p.id}" title="Full screen &amp; zoom">⛶</button>
+     </div>`).join("");
+  $("#lbPhotos").querySelectorAll(".zoomBtn").forEach((b) =>
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const im = b.parentElement.querySelector("img");
+      openZoom(+b.dataset.id, im.dataset.v);
+    }));
   $("#lbPhotos").querySelectorAll("img").forEach((im) => {
     im.addEventListener("click", () => {
       const v = im.dataset.v === "disp" ? "enh" : "disp";
@@ -314,8 +323,109 @@ $("#lightbox").addEventListener("click", (e) => {
   if (e.target.id === "lightbox") $("#lightbox").classList.add("hidden");
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") $("#lightbox").classList.add("hidden");
+  if (e.key !== "Escape") return;
+  if (!$("#zoomview").classList.contains("hidden")) closeZoom();
+  else $("#lightbox").classList.add("hidden");
 });
+
+/* ---------- fullscreen zoom viewer ---------- */
+const ZV = { pid: null, v: "disp", s: 1, base: 1, tx: 0, ty: 0, iw: 0, ih: 0 };
+const zvImg = $("#zvImg");
+
+function zvApply() {
+  zvImg.style.transform =
+    `translate(${ZV.tx}px, ${ZV.ty}px) scale(${ZV.s * ZV.base})`;
+  $("#zvFlip").classList.toggle("on", ZV.v === "enh");
+}
+function zvFit() {
+  ZV.base = Math.min(innerWidth / ZV.iw, innerHeight / ZV.ih);
+  ZV.s = 1;
+  ZV.tx = (innerWidth - ZV.iw * ZV.base) / 2;
+  ZV.ty = (innerHeight - ZV.ih * ZV.base) / 2;
+  zvApply();
+}
+function zvZoomAt(cx, cy, f) {
+  const s0 = ZV.s;
+  ZV.s = Math.min(14, Math.max(1, ZV.s * f));
+  const rf = ZV.s / s0;
+  ZV.tx = cx - (cx - ZV.tx) * rf;
+  ZV.ty = cy - (cy - ZV.ty) * rf;
+  if (ZV.s === 1) return zvFit();
+  zvApply();
+}
+function openZoom(pid, v) {
+  ZV.pid = pid; ZV.v = v || "disp";
+  const pre = new Image();
+  pre.onload = () => {
+    ZV.iw = pre.naturalWidth; ZV.ih = pre.naturalHeight;
+    zvImg.src = pre.src;
+    $("#zoomview").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    zvFit();
+  };
+  pre.src = imgUrl(pid, ZV.v);
+}
+function closeZoom() {
+  $("#zoomview").classList.add("hidden");
+  document.body.style.overflow = "";
+}
+function zvFlip() {
+  const v = ZV.v === "disp" ? "enh" : "disp";
+  const pre = new Image();
+  pre.onload = () => { ZV.v = v; zvImg.src = pre.src; zvApply(); };
+  pre.src = imgUrl(ZV.pid, v);   // same dimensions, transform is preserved
+}
+$("#zvClose").addEventListener("click", closeZoom);
+$("#zvReset").addEventListener("click", zvFit);
+$("#zvFlip").addEventListener("click", zvFlip);
+$("#zvIn").addEventListener("click", () =>
+  zvZoomAt(innerWidth / 2, innerHeight / 2, 1.5));
+$("#zvOut").addEventListener("click", () =>
+  zvZoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.5));
+$("#zoomview").addEventListener("wheel", (e) => {
+  e.preventDefault();
+  zvZoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.002));
+}, { passive: false });
+
+// drag to pan / click to flip / pinch to zoom (pointer events)
+const zvPtrs = new Map();
+let zvMoved = 0, zvPinchD = 0;
+$("#zoomview").addEventListener("pointerdown", (e) => {
+  if (e.target.closest("#zvBar")) return;
+  zvPtrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (zvPtrs.size === 1) zvMoved = 0;
+  if (zvPtrs.size === 2) {
+    const [a, b] = [...zvPtrs.values()];
+    zvPinchD = Math.hypot(a.x - b.x, a.y - b.y);
+  }
+  $("#zoomview").setPointerCapture(e.pointerId);
+});
+$("#zoomview").addEventListener("pointermove", (e) => {
+  const p = zvPtrs.get(e.pointerId);
+  if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if (zvPtrs.size === 1) {
+    zvMoved += Math.abs(dx) + Math.abs(dy);
+    ZV.tx += dx; ZV.ty += dy;
+    zvApply();
+  } else if (zvPtrs.size === 2) {
+    const [a, b] = [...zvPtrs.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (zvPinchD > 0)
+      zvZoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / zvPinchD);
+    zvPinchD = d;
+    zvMoved = 99;
+  }
+});
+["pointerup", "pointercancel"].forEach((ev) =>
+  $("#zoomview").addEventListener(ev, (e) => {
+    const was = zvPtrs.size;
+    zvPtrs.delete(e.pointerId);
+    if (ev === "pointerup" && was === 1 && zvMoved < 6 &&
+        !e.target.closest("#zvBar"))
+      zvFlip();   // a true click (no drag) flips original/enhanced
+  }));
 
 /* ---------- update cycle ---------- */
 function update() {
