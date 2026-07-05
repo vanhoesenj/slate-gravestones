@@ -22,8 +22,7 @@ def main():
         "SELECT id, orig_path, filename FROM photos ORDER BY id").fetchall()
     ok = missing_src = skipped = 0
     for p in photos:
-        thumb, disp = images.derivative_paths(p["id"])
-        if os.path.exists(thumb) and os.path.exists(disp):
+        if all(os.path.exists(x) for x in images.derivative_paths(p["id"])):
             skipped += 1
             continue
         if not p["orig_path"] or not os.path.exists(p["orig_path"]):
