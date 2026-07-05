@@ -10,8 +10,8 @@ const F = { country: "", state: "", cemetery: "", yearMin: null, yearMax: null,
 const GALLERY_PAGE = 120;
 let galleryShown = GALLERY_PAGE;
 
-const PALETTE = ["#35606e", "#8c7a4e", "#9b3b7a", "#b3552f", "#4a7c59",
-  "#6d8196", "#a68c2f", "#7a5b8c", "#b0763b", "#54838c", "#8c4e5b", "#5b8c7a"];
+const PALETTE = ["#4a3f63", "#b3823c", "#7c6a9c", "#5a6470", "#9b3b7a",
+  "#4a7c59", "#b3552f", "#6d8196", "#8c7a4e", "#54838c", "#8c4e5b", "#2b2433"];
 
 const imgUrl = (photoId, kind) => `${IMG}/img/${photoId}/${kind}.jpg`;
 // " · 1745–1794", " · d. 1794", " · b. 1745", or ""
@@ -127,15 +127,15 @@ function initMap() {
       id: "cem-circles", type: "circle", source: "cems",
       paint: {
         "circle-radius": ["+", 5, ["*", 1.4, ["sqrt", ["get", "count"]]]],
-        "circle-color": "#35606e", "circle-opacity": 0.82,
-        "circle-stroke-color": "#fff", "circle-stroke-width": 1.5,
+        "circle-color": "#4a3f63", "circle-opacity": 0.85,
+        "circle-stroke-color": "#f7f5f0", "circle-stroke-width": 1.5,
       },
     });
     map.addLayer({
       id: "cem-labels", type: "symbol", source: "cems",
       layout: { "text-field": ["get", "count"], "text-size": 10,
                 "text-font": ["Noto Sans Regular"] },
-      paint: { "text-color": "#fff" },
+      paint: { "text-color": "#f7f5f0" },
     });
     map.on("click", "cem-circles", (e) => {
       const p = e.features[0].properties;
@@ -237,7 +237,7 @@ function renderDecadeChart(stones) {
     type: "bar",
     data: { labels: decades.map((d) => d + "s"),
             datasets: [{ label: "gravestones", data: decades.map((d) => per[d]),
-                         backgroundColor: "#8c7a4e" }] },
+                         backgroundColor: "#b3823c" }] },
     options: { maintainAspectRatio: false, responsive: true,
       plugins: { legend: { display: false },
                  title: { display: true, text: "Gravestones by decade" } },
@@ -315,6 +315,11 @@ function update() {
 
 /* ---------- init ---------- */
 (async function init() {
+  Chart.defaults.font.family = '"Source Sans 3", sans-serif';
+  Chart.defaults.color = "#5a6470";
+  Chart.defaults.plugins.title.color = "#4a3f63";
+  Chart.defaults.plugins.title.font = { family: '"Jost", sans-serif',
+    size: 14, weight: 600 };
   const r = await fetch("data/library.json");
   DB = await r.json();
   IMG = DB.imageBase || "";
