@@ -148,6 +148,37 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
   border: 1px solid var(--line); border-left: 3px solid var(--harbour);
   border-radius: 6px; font-size: 14px; line-height: 1.55;
   white-space: pre-wrap; }
+.lbtrans { margin: 12px 0; padding: 14px 16px; background: #fff;
+  border: 1px solid var(--line); border-radius: 6px;
+  font-family: Georgia, "Times New Roman", serif; font-style: italic;
+  font-size: 15px; line-height: 1.65; white-space: pre-wrap; text-align: center;
+  color: var(--slate-dark); box-shadow: inset 0 1px 4px rgba(43,36,51,.08); }
+.lbbtns { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.lbbtns button { border: 1px solid var(--slate-mid); background: transparent;
+  color: var(--slate-mid); border-radius: 999px; padding: 5px 14px;
+  cursor: pointer; font-family: inherit; font-size: 13px; }
+.lbbtns button:hover { background: var(--slate-mid); color: var(--paper); }
+
+/* compare view */
+#compare { position: fixed; inset: 0; background: #17131c; z-index: 90;
+  display: flex; gap: 14px; padding: 40px 20px 34px; }
+#compare.hidden { display: none; }
+.cmp-half { flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px; min-width: 0; }
+.cmp-half img { max-width: 100%; max-height: 78vh; border-radius: 6px;
+  cursor: pointer; }
+.cmp-half img.enhanced { outline: 3px solid var(--harbour); }
+.cmp-cap { color: var(--paper); font-size: 14px; text-align: center; }
+.cmp-cap span { display: block; color: #cfc6e0; font-size: 12.5px; }
+#cmpClose { position: fixed; top: 14px; right: 14px; z-index: 91;
+  border: 1px solid rgba(255,255,255,.35); background: rgba(43,36,51,.75);
+  color: var(--paper); border-radius: 999px; width: 38px; height: 38px;
+  font-size: 16px; cursor: pointer; }
+#cmpClose:hover { background: var(--slate-mid); }
+#cmpHint { position: fixed; bottom: 10px; left: 0; right: 0; text-align: center;
+  color: #cfc6e0; font-size: 12.5px; pointer-events: none;
+  text-shadow: 0 1px 3px #000; }
+@media (max-width: 700px) { #compare { flex-direction: column; } }
 @media (max-width: 900px) {
   #lbCard { flex-direction: column; }
   #lbMeta { flex: none; width: 100%; }

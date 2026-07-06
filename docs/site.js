@@ -6,7 +6,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
 let DB, IMG = "", map, tagChart, decadeChart;
 const cemById = {}, tagById = {}, catById = {};
 const F = { country: "", state: "", cemetery: "", yearMin: null, yearMax: null,
-            tags: new Set() };
+            tags: new Set(), q: "" };
 const GALLERY_PAGE = 120;
 let galleryShown = GALLERY_PAGE;
 
@@ -29,6 +29,11 @@ function filteredStones() {
     if (F.cemetery && String(s.cem) !== F.cemetery) return false;
     if (F.yearMin != null && (s.year == null || s.year < F.yearMin)) return false;
     if (F.yearMax != null && (s.year == null || s.year > F.yearMax)) return false;
+    if (F.q) {
+      const hay = `${s.title} ${s.trans || ""} ${s.notes || ""} ${c.name} ${c.city}`
+        .toLowerCase();
+      if (!hay.includes(F.q)) return false;
+    }
     // OR within a category, AND across categories:
     // urn + willow = either; urn + Ogee Top = urn on an ogee-top marker
     if (F.tags.size) {
@@ -105,10 +110,19 @@ function buildTagFilters() {
       e.target.value === "" ? null : +e.target.value;
     update();
   }));
+$("#fSearch").addEventListener("input", () => {
+  clearTimeout(window._sq);
+  window._sq = setTimeout(() => {
+    F.q = $("#fSearch").value.trim().toLowerCase();
+    update();
+  }, 250);
+});
 $("#clearBtn").addEventListener("click", () => {
   F.country = F.state = F.cemetery = "";
   F.yearMin = F.yearMax = null;
   F.tags.clear();
+  F.q = "";
+  $("#fSearch").value = "";
   $("#fYearMin").value = $("#fYearMax").value = "";
   update();
 });
@@ -190,10 +204,14 @@ function renderTagChart(stones) {
   const groupBy = $("#chartGroup").value;
   const catTags = DB.tags.filter((t) => t.cat === catId);
   const tagIds = catTags.map((t) => t.id);
-  const labelsOf = (s) => groupBy === "state" ? (cemById[s.cem].state || "—")
-    : groupBy === "cemetery" ? cemById[s.cem].name : "All";
+  const labelsOf = (s) =>
+    groupBy === "state" ? (cemById[s.cem].state || "—") :
+    groupBy === "cemetery" ? cemById[s.cem].name :
+    groupBy === "decade" ? (s.year ? Math.floor(s.year / 10) * 10 + "s" : "undated") :
+    "All";
 
-  const groups = [...new Set(stones.map(labelsOf))].sort();
+  const groups = [...new Set(stones.map(labelsOf))].sort(
+    (a, b) => a === "undated" ? 1 : b === "undated" ? -1 : a < b ? -1 : 1);
   const counts = {}; // group -> tagId -> n
   for (const g of groups) counts[g] = {};
   for (const s of stones) {
@@ -203,27 +221,35 @@ function renderTagChart(stones) {
   }
   const usedTags = catTags.filter((t) => groups.some((g) => counts[g][t.id]));
   const single = groupBy === "none";
-  const data = {
-    labels: usedTags.map((t) => t.name),
-    datasets: single
-      ? [{ label: "gravestones", data: usedTags.map((t) => counts["All"]?.[t.id] || 0),
-           backgroundColor: chartColors(usedTags.length) }]
-      : groups.map((g, i) => ({
-          label: g, data: usedTags.map((t) => counts[g][t.id] || 0),
-          backgroundColor: PALETTE[i % PALETTE.length], stack: "s" })),
-  };
+  const byDecade = groupBy === "decade";
+  // decade mode transposes the chart: x-axis = decades, stacked bars = tags —
+  // the "style evolution over time" view
+  const data = byDecade
+    ? { labels: groups,
+        datasets: usedTags.map((t, i) => ({
+          label: t.name, data: groups.map((g) => counts[g][t.id] || 0),
+          backgroundColor: PALETTE[i % PALETTE.length], stack: "s" })) }
+    : {
+      labels: usedTags.map((t) => t.name),
+      datasets: single
+        ? [{ label: "gravestones", data: usedTags.map((t) => counts["All"]?.[t.id] || 0),
+             backgroundColor: chartColors(usedTags.length) }]
+        : groups.map((g, i) => ({
+            label: g, data: usedTags.map((t) => counts[g][t.id] || 0),
+            backgroundColor: PALETTE[i % PALETTE.length], stack: "s" })),
+    };
   tagChart?.destroy();
   tagChart = new Chart($("#tagChart"), {
     type: "bar",
     data,
     options: {
-      indexAxis: "y", maintainAspectRatio: false, responsive: true,
+      indexAxis: byDecade ? "x" : "y", maintainAspectRatio: false, responsive: true,
       plugins: { legend: { display: !single, position: "bottom",
                            labels: { boxWidth: 12, font: { size: 11 } } },
                  title: { display: true,
                    text: `${catById[catId].name} — ${stones.length} gravestones` } },
-      scales: { x: { stacked: !single, ticks: { precision: 0 } },
-                y: { stacked: !single, ticks: { font: { size: 11 } } } },
+      scales: { x: { stacked: !single, ticks: { precision: 0, font: { size: 11 } } },
+                y: { stacked: !single, ticks: { precision: 0, font: { size: 11 } } } },
     },
   });
 }
@@ -313,20 +339,83 @@ function openLightbox(id) {
     <h3>${esc(s.title) || "Unnamed gravestone"}${yearsOf(s)}</h3>
     <div class="where">${esc(s.dateText || "")}${s.dateText ? " — " : ""}
       ${esc(c.name)}, ${esc([c.city, c.state, c.country].filter(Boolean).join(", "))}</div>
+    ${s.trans ? `<div class="lbtrans">${esc(s.trans)}</div>` : ""}
     <div class="tags">${DB.categories.map((cat) =>
       (byCat[cat.id] || []).map((n) =>
         `<span><b>${esc(cat.name)}:</b> ${esc(n)}</span>`).join("")).join("")}</div>
-    ${s.notes ? `<div class="lbnotes">${esc(s.notes)}</div>` : ""}`;
+    ${s.notes ? `<div class="lbnotes">${esc(s.notes)}</div>` : ""}
+    <div class="lbbtns">
+      <button id="cmpBtn"></button>
+      <button id="linkBtn" title="Copy a direct link to this gravestone">🔗 copy link</button>
+    </div>`;
+  const cmpBtn = $("#cmpBtn");
+  cmpBtn.textContent = compareId && compareId !== id
+    ? "⇄ Compare with selected" : compareId === id
+    ? "✓ Selected — open another gravestone" : "⇄ Compare";
+  cmpBtn.addEventListener("click", () => {
+    if (compareId && compareId !== id) {
+      openCompare(compareId, id);
+      compareId = null;
+    } else {
+      compareId = id;
+      cmpBtn.textContent = "✓ Selected — open another gravestone";
+    }
+  });
+  $("#linkBtn").addEventListener("click", () => {
+    const url = location.href.split("#")[0] + "#stone=" + id;
+    navigator.clipboard?.writeText(url);
+    $("#linkBtn").textContent = "✓ link copied";
+    setTimeout(() => { const b = $("#linkBtn"); if (b) b.textContent = "🔗 copy link"; }, 1500);
+  });
+  history.replaceState(null, "", "#stone=" + id);
   $("#lightbox").classList.remove("hidden");
 }
-$("#lbClose").addEventListener("click", () => $("#lightbox").classList.add("hidden"));
+function closeLightbox() {
+  $("#lightbox").classList.add("hidden");
+  history.replaceState(null, "", location.pathname + location.search);
+}
+$("#lbClose").addEventListener("click", closeLightbox);
 $("#lightbox").addEventListener("click", (e) => {
-  if (e.target.id === "lightbox") $("#lightbox").classList.add("hidden");
+  if (e.target.id === "lightbox") closeLightbox();
 });
+
+/* ---------- compare view ---------- */
+let compareId = null;
+function cmpHalf(el, s) {
+  const c = cemById[s.cem];
+  el.innerHTML = `
+    <img src="${imgUrl(s.photos[0].id, "disp")}" data-id="${s.photos[0].id}"
+      data-v="disp" title="Click to flip original / enhanced" alt="">
+    <div class="cmp-cap"><strong>${esc(s.title) || "Unnamed"}</strong>${yearsOf(s)}
+      <span>${esc(c.name)}, ${esc(c.state || c.country)}</span></div>`;
+  const im = el.querySelector("img");
+  im.addEventListener("click", () => {
+    const v = im.dataset.v === "disp" ? "enh" : "disp";
+    const pre = new Image();
+    pre.onload = () => {
+      im.src = pre.src; im.dataset.v = v;
+      im.classList.toggle("enhanced", v === "enh");
+    };
+    pre.src = imgUrl(+im.dataset.id, v);
+  });
+}
+function openCompare(idA, idB) {
+  const a = DB.stones.find((x) => x.id === idA);
+  const b = DB.stones.find((x) => x.id === idB);
+  if (!a || !b) return;
+  cmpHalf($("#cmpA"), a);
+  cmpHalf($("#cmpB"), b);
+  $("#lightbox").classList.add("hidden");
+  $("#compare").classList.remove("hidden");
+}
+$("#cmpClose").addEventListener("click", () =>
+  $("#compare").classList.add("hidden"));
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("#zoomview").classList.contains("hidden")) closeZoom();
-  else $("#lightbox").classList.add("hidden");
+  else if (!$("#compare").classList.contains("hidden"))
+    $("#compare").classList.add("hidden");
+  else if (!$("#lightbox").classList.contains("hidden")) closeLightbox();
 });
 
 /* ---------- fullscreen zoom viewer ---------- */
@@ -462,4 +551,7 @@ function update() {
     `<option value="${c.id}">${esc(c.name)}</option>`).join("");
   initMap();
   update();
+  // permalink: #stone=7 opens that gravestone directly
+  const m = location.hash.match(/#stone=(\d+)/);
+  if (m && DB.stones.some((s) => s.id === +m[1])) openLightbox(+m[1]);
 })();

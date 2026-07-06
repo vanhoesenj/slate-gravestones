@@ -246,6 +246,7 @@ async function openStone(id) {
   $("#sdBirth").value = s.birth_year ?? "";
   $("#sdYear").value = s.year ?? "";
   $("#sdDate").value = s.date_text || "";
+  $("#sdTrans").value = s.transcription || "";
   $("#sdNotes").value = s.notes || "";
   $("#sdCem").value = s.cemetery_id;
   $("#sdPhotos").innerHTML = s.photos.map((p) =>
@@ -313,6 +314,7 @@ $("#sdForm").addEventListener("submit", async (e) => {
     year: parseInt($("#sdYear").value) || null,
     birth_year: parseInt($("#sdBirth").value) || null,
     date_text: $("#sdDate").value,
+    transcription: $("#sdTrans").value,
     notes: $("#sdNotes").value,
     cemetery_id: +$("#sdCem").value,
   }});

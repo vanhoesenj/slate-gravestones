@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-<link rel="stylesheet" href="site.css?v=6">
+<link rel="stylesheet" href="site.css?v=7">
 </head>
 <body>
 <header>
@@ -26,6 +26,8 @@
 <div id="layout">
   <aside id="filters">
     <h2>Filter</h2>
+    <label>Search
+      <input id="fSearch" type="search" placeholder="Name, inscription, notes…"></label>
     <label>Country <select id="fCountry"><option value="">All</option></select></label>
     <label>State / Province <select id="fState"><option value="">All</option></select></label>
     <label>Cemetery <select id="fCemetery"><option value="">All</option></select></label>
@@ -49,6 +51,7 @@
           <option value="none">— overall —</option>
           <option value="state">state/province</option>
           <option value="cemetery">cemetery</option>
+          <option value="decade">decade</option>
         </select></label>
       </div>
       <div class="chartRow">
@@ -72,6 +75,13 @@
   </div>
 </div>
 
+<div id="compare" class="hidden">
+  <button id="cmpClose">✕</button>
+  <div class="cmp-half" id="cmpA"></div>
+  <div class="cmp-half" id="cmpB"></div>
+  <div id="cmpHint">click a photo to flip original / enhanced</div>
+</div>
+
 <div id="zoomview" class="hidden">
   <img id="zvImg" draggable="false" alt="">
   <div id="zvBar">
@@ -91,6 +101,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="site.js?v=6"></script>
+<script src="site.js?v=7"></script>
 </body>
 </html>

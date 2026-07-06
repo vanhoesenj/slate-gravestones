@@ -248,9 +248,10 @@ def edit_stone(sid):
     con = db.connect()
     con.execute(
         "UPDATE stones SET title=?, year=?, birth_year=?, date_text=?, notes=?, "
-        "cemetery_id=? WHERE id=?",
+        "transcription=?, cemetery_id=? WHERE id=?",
         (d.get("title", ""), d.get("year"), d.get("birth_year"),
-         d.get("date_text", ""), d.get("notes", ""), d["cemetery_id"], sid))
+         d.get("date_text", ""), d.get("notes", ""),
+         d.get("transcription", ""), d["cemetery_id"], sid))
     con.commit()
     con.close()
     return jsonify({"ok": True})

@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS stones (
     title TEXT DEFAULT '',            -- e.g. name on the stone
     year INTEGER,                     -- death year (principal date; drives charts)
     birth_year INTEGER,
+    transcription TEXT DEFAULT '',    -- inscription as carved, line breaks kept
     date_text TEXT DEFAULT '',        -- full date as inscribed, free text
     notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
@@ -105,6 +106,9 @@ def init():
     cols = [r["name"] for r in con.execute("PRAGMA table_info(stones)")]
     if "birth_year" not in cols:
         con.execute("ALTER TABLE stones ADD COLUMN birth_year INTEGER")
+        con.commit()
+    if "transcription" not in cols:
+        con.execute("ALTER TABLE stones ADD COLUMN transcription TEXT DEFAULT ''")
         con.commit()
     # Seed vocabularies only if empty
     if con.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0:
