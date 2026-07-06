@@ -243,9 +243,7 @@ async function openStone(id) {
   $("#stoneDetail").classList.remove("hidden");
   $("#sdTitleHead").textContent = `Gravestone #${id}`;
   $("#sdTitle").value = s.title || "";
-  $("#sdBirth").value = s.birth_year ?? "";
-  $("#sdYear").value = s.year ?? "";
-  $("#sdDate").value = s.date_text || "";
+  renderPersons(s.persons?.length ? s.persons : [{}]);
   $("#sdTrans").value = s.transcription || "";
   $("#sdNotes").value = s.notes || "";
   $("#sdCem").value = s.cemetery_id;
@@ -272,6 +270,35 @@ async function openStone(id) {
   renderTagGroups(new Set(s.tag_ids));
   document.querySelectorAll("#stoneGrid .card").forEach((el) =>
     el.classList.toggle("sel", +el.dataset.id === id));
+}
+
+function personRow(p = {}) {
+  const div = document.createElement("div");
+  div.className = "prow";
+  div.innerHTML = `
+    <input class="pname" placeholder="Name" value="${esc(p.name || "")}">
+    <input class="pbirth" type="number" min="1500" max="2100" placeholder="Birth" value="${p.birth ?? ""}">
+    <input class="pdeath" type="number" min="1500" max="2100" placeholder="Death" value="${p.death ?? ""}">
+    <button type="button" class="pdel" title="Remove person">✕</button>`;
+  div.querySelector(".pdel").addEventListener("click", () => {
+    div.remove();
+    if (!$("#sdPersons").children.length) renderPersons([{}]);
+  });
+  return div;
+}
+function renderPersons(list) {
+  const box = $("#sdPersons");
+  box.innerHTML = "";
+  list.forEach((p) => box.appendChild(personRow(p)));
+}
+$("#addPerson").addEventListener("click", () =>
+  $("#sdPersons").appendChild(personRow()));
+function gatherPersons() {
+  return [...$("#sdPersons").querySelectorAll(".prow")].map((r) => ({
+    name: r.querySelector(".pname").value.trim(),
+    birth: parseInt(r.querySelector(".pbirth").value) || null,
+    death: parseInt(r.querySelector(".pdeath").value) || null,
+  })).filter((p) => p.name || p.birth || p.death);
 }
 
 function renderTagGroups(selectedIds) {
@@ -311,9 +338,7 @@ $("#sdForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   await api(`/api/stones/${curStone}`, { method: "PUT", body: {
     title: $("#sdTitle").value,
-    year: parseInt($("#sdYear").value) || null,
-    birth_year: parseInt($("#sdBirth").value) || null,
-    date_text: $("#sdDate").value,
+    persons: gatherPersons(),
     transcription: $("#sdTrans").value,
     notes: $("#sdNotes").value,
     cemetery_id: +$("#sdCem").value,

@@ -214,8 +214,11 @@ def stones():
     if request.args.get("untagged") == "1":
         where.append("s.id NOT IN (SELECT stone_id FROM stone_tags)")
     if request.args.get("q"):
-        where.append("(s.title LIKE ? OR s.notes LIKE ? OR s.transcription LIKE ?)")
-        params += [f"%{request.args['q']}%"] * 3
+        where.append(
+            "(s.title LIKE ? OR s.notes LIKE ? OR s.transcription LIKE ? OR "
+            "EXISTS (SELECT 1 FROM persons p WHERE p.stone_id=s.id AND "
+            "p.name LIKE ?))")
+        params += [f"%{request.args['q']}%"] * 4
     sql = f"""SELECT s.id, s.cemetery_id, s.title, s.year, s.date_text,
                      c.name AS cemetery,
                      (SELECT id FROM photos WHERE stone_id=s.id
@@ -238,6 +241,9 @@ def stone(sid):
         con.close()
         abort(404)
     out = dict(s)
+    out["persons"] = [dict(r) for r in con.execute(
+        "SELECT id, name, birth_year AS birth, death_year AS death "
+        "FROM persons WHERE stone_id=? ORDER BY sort, id", (sid,))]
     out["photos"] = [dict(r) for r in con.execute(
         "SELECT id, filename, width, height, is_primary, r2_synced "
         "FROM photos WHERE stone_id=? ORDER BY is_primary DESC, id", (sid,))]
@@ -256,11 +262,31 @@ def edit_stone(sid):
                "transcription", "cemetery_id"]
     sets = [f"{k}=?" for k in allowed if k in d]
     vals = [d[k] for k in allowed if k in d]
-    if not sets:
-        return jsonify({"ok": True})
     con = db.connect()
-    con.execute(f"UPDATE stones SET {', '.join(sets)} WHERE id=?",
-                (*vals, sid))
+    if sets:
+        con.execute(f"UPDATE stones SET {', '.join(sets)} WHERE id=?",
+                    (*vals, sid))
+    if "persons" in d:
+        con.execute("DELETE FROM persons WHERE stone_id=?", (sid,))
+        deaths, births, kept = [], [], 0
+        for i, p in enumerate(d["persons"]):
+            name = (p.get("name") or "").strip()
+            b, dd = p.get("birth"), p.get("death")
+            if not name and b is None and dd is None:
+                continue
+            con.execute(
+                "INSERT INTO persons(stone_id, name, birth_year, death_year, "
+                "sort) VALUES(?,?,?,?,?)", (sid, name, b, dd, i))
+            kept += 1
+            if dd:
+                deaths.append(dd)
+            if b:
+                births.append(b)
+        # keep the stone-level chart/filter fields in sync: principal year =
+        # earliest death on the stone (best proxy for carving date)
+        con.execute("UPDATE stones SET year=?, birth_year=? WHERE id=?",
+                    (min(deaths) if deaths else None,
+                     births[0] if kept == 1 and births else None, sid))
     con.commit()
     con.close()
     return jsonify({"ok": True})

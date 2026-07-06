@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS stones (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS persons (
+    id INTEGER PRIMARY KEY,
+    stone_id INTEGER NOT NULL REFERENCES stones(id) ON DELETE CASCADE,
+    name TEXT DEFAULT '',
+    birth_year INTEGER,
+    death_year INTEGER,
+    sort INTEGER DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS photos (
     id INTEGER PRIMARY KEY,
     stone_id INTEGER NOT NULL REFERENCES stones(id) ON DELETE CASCADE,
@@ -109,6 +118,13 @@ def init():
         con.commit()
     if "transcription" not in cols:
         con.execute("ALTER TABLE stones ADD COLUMN transcription TEXT DEFAULT ''")
+        con.commit()
+    # backfill persons from legacy single-name stones (runs once)
+    if (con.execute("SELECT COUNT(*) FROM persons").fetchone()[0] == 0 and
+            con.execute("SELECT COUNT(*) FROM stones").fetchone()[0] > 0):
+        con.execute(
+            "INSERT INTO persons(stone_id, name, birth_year, death_year, sort) "
+            "SELECT id, title, birth_year, year, 0 FROM stones WHERE title != ''")
         con.commit()
     # Seed vocabularies only if empty
     if con.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0:

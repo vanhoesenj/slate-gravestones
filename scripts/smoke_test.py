@@ -108,6 +108,15 @@ def main():
     assert len(st["tag_ids"]) == 3 and st["year"] == 1794
     print("tagging ok:", st["tag_ids"])
 
+    # multiple persons on one stone; stone year syncs to earliest death
+    call("put", f"/api/stones/{s1['stone_id']}", json={
+        "cemetery_id": cem["id"],
+        "persons": [{"name": "Catharine", "death": 1852},
+                    {"name": "Richard", "birth": 1863, "death": 1863}]})
+    st = call("get", f"/api/stones/{s1['stone_id']}")
+    assert len(st["persons"]) == 2 and st["year"] == 1852, st
+    print("persons ok:", [p["name"] for p in st["persons"]])
+
     # primary photo swap
     call("put", f"/api/photos/{s1['photos'][1]}/primary")
 
@@ -120,6 +129,7 @@ def main():
     assert len(data["stones"]) == 2
     assert data["stones"][0]["photos"][0]["id"] == s1["photos"][1]  # primary first
     assert any(t["name"] == "Zerubbabel Collins" for t in data["tags"])
+    assert len(data["stones"][0]["persons"]) == 2
     print("library.json ok:", {k: len(v) for k, v in data.items() if isinstance(v, list)})
 
     # stones list filters

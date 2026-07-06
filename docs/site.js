@@ -14,11 +14,29 @@ const PALETTE = ["#4a3f63", "#b3823c", "#7c6a9c", "#5a6470", "#9b3b7a",
   "#4a7c59", "#b3552f", "#6d8196", "#8c7a4e", "#54838c", "#8c4e5b", "#2b2433"];
 
 const imgUrl = (photoId, kind) => `${IMG}/img/${photoId}/${kind}.jpg`;
-// " · 1745–1794", " · d. 1794", " · b. 1745", or ""
-const yearsOf = (s) =>
-  s.birth && s.year ? ` · ${s.birth}–${s.year}` :
-  s.year ? ` · d. ${s.year}` :
-  s.birth ? ` · b. ${s.birth}` : "";
+// " · 1745–1794", " · d. 1794", " · 1852–1863" (multi-person range), or ""
+function yearsOf(s) {
+  const ps = s.persons || [];
+  if (ps.length === 1) {
+    const p = ps[0];
+    if (p.birth && p.death) return ` · ${p.birth}–${p.death}`;
+    if (p.death) return ` · d. ${p.death}`;
+    if (p.birth) return ` · b. ${p.birth}`;
+  }
+  if (ps.length > 1) {
+    const deaths = ps.map((p) => p.death).filter(Boolean);
+    if (deaths.length) {
+      const lo = Math.min(...deaths), hi = Math.max(...deaths);
+      return lo === hi ? ` · d. ${lo}` : ` · ${lo}–${hi}`;
+    }
+  }
+  return s.birth && s.year ? ` · ${s.birth}–${s.year}` :
+    s.year ? ` · d. ${s.year}` :
+    s.birth ? ` · b. ${s.birth}` : "";
+}
+const personLine = (p) => esc(p.name || "—") +
+  (p.birth && p.death ? `, ${p.birth}–${p.death}` :
+   p.death ? `, d. ${p.death}` : p.birth ? `, b. ${p.birth}` : "");
 
 /* ---------- filtering ---------- */
 function filteredStones() {
@@ -30,7 +48,8 @@ function filteredStones() {
     if (F.yearMin != null && (s.year == null || s.year < F.yearMin)) return false;
     if (F.yearMax != null && (s.year == null || s.year > F.yearMax)) return false;
     if (F.q) {
-      const hay = `${s.title} ${s.trans || ""} ${s.notes || ""} ${c.name} ${c.city}`
+      const names = (s.persons || []).map((p) => p.name).join(" ");
+      const hay = `${s.title} ${names} ${s.trans || ""} ${s.notes || ""} ${c.name} ${c.city}`
         .toLowerCase();
       if (!hay.includes(F.q)) return false;
     }
@@ -337,8 +356,9 @@ function openLightbox(id) {
     <div class="lbhint">◐ Click a photo to flip between the original and an
       enhanced view that brings out carving and inscriptions.</div>
     <h3>${esc(s.title) || "Unnamed gravestone"}${yearsOf(s)}</h3>
-    <div class="where">${esc(s.dateText || "")}${s.dateText ? " — " : ""}
-      ${esc(c.name)}, ${esc([c.city, c.state, c.country].filter(Boolean).join(", "))}</div>
+    <div class="where">${esc(c.name)}, ${esc([c.city, c.state, c.country].filter(Boolean).join(", "))}</div>
+    ${(s.persons || []).length > 1 || ((s.persons || [])[0]?.name && s.persons[0].name !== s.title)
+      ? `<ul class="lbpersons">${s.persons.map((p) => `<li>${personLine(p)}</li>`).join("")}</ul>` : ""}
     ${s.trans ? `<div class="lbtrans">${esc(s.trans)}</div>` : ""}
     <div class="tags">${DB.categories.map((cat) =>
       (byCat[cat.id] || []).map((n) =>

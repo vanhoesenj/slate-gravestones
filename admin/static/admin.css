@@ -65,6 +65,11 @@ button:disabled { opacity: .45; cursor: default; }
   display: flex; gap: 4px; justify-content: center; }
 .photostrip .ph .tools button { padding: 2px 7px; font-size: 11px; }
 .photostrip .ph.primary img { outline: 3px solid var(--accent2); }
+.prow { display: grid; grid-template-columns: 1fr 90px 90px 34px; gap: 8px;
+  margin-bottom: 6px; align-items: center; }
+.prow .pdel { border: none; color: var(--danger); background: none;
+  font-size: 14px; padding: 0; cursor: pointer; }
+#addPerson { margin: 2px 0 10px; padding: 4px 12px; font-size: 13px; }
 .taggroup { margin: 12px 0; border-top: 1px solid var(--line); padding-top: 8px; }
 .taggroup h4 { margin: 0 0 6px; font-size: 13px; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; }

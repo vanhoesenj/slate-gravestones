@@ -93,12 +93,11 @@
           <h2 id="sdTitleHead"></h2>
           <div id="sdPhotos" class="photostrip"></div>
           <form id="sdForm">
-            <label>Name on gravestone <input id="sdTitle"></label>
-            <div class="grid3">
-              <label>Birth year <input id="sdBirth" type="number" min="1500" max="2100"></label>
-              <label>Death year <input id="sdYear" type="number" min="1500" max="2100"></label>
-              <label>Date as inscribed <input id="sdDate" placeholder="e.g. Mar. 4, 1847"></label>
-            </div>
+            <label>Title / name on gravestone
+              <input id="sdTitle" placeholder="e.g. William Lloyd — or: Children of Thomas and Elinor Davies"></label>
+            <label>People on this stone</label>
+            <div id="sdPersons"></div>
+            <button type="button" id="addPerson">+ add person</button>
             <label>Cemetery <select id="sdCem"></select></label>
             <label>Inscription — as carved, keep the line breaks
               <textarea id="sdTrans" rows="5" placeholder="ER COF&#10;am&#10;WILLIAM LLOYD…"></textarea></label>

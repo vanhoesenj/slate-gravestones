@@ -28,8 +28,13 @@ def export():
     }
     stones = con.execute(
         "SELECT id, cemetery_id AS cem, title, year, birth_year AS birth, "
-        "date_text AS dateText, notes, transcription AS trans "
-        "FROM stones ORDER BY id").fetchall()
+        "notes, transcription AS trans FROM stones ORDER BY id").fetchall()
+    persons_by_stone = {}
+    for r in con.execute(
+            "SELECT stone_id, name, birth_year AS birth, death_year AS death "
+            "FROM persons ORDER BY stone_id, sort, id"):
+        persons_by_stone.setdefault(r["stone_id"], []).append(
+            {"name": r["name"], "birth": r["birth"], "death": r["death"]})
     tags_by_stone = {}
     for r in con.execute("SELECT stone_id, tag_id FROM stone_tags"):
         tags_by_stone.setdefault(r["stone_id"], []).append(r["tag_id"])
@@ -41,6 +46,7 @@ def export():
             {"id": r["id"], "w": r["w"], "h": r["h"]})
     for s in stones:
         rec = dict(s)
+        rec["persons"] = persons_by_stone.get(s["id"], [])
         rec["tags"] = tags_by_stone.get(s["id"], [])
         rec["photos"] = photos_by_stone.get(s["id"], [])
         if rec["photos"]:  # only publish stones that have at least one photo

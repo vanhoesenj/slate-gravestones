@@ -148,6 +148,8 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
   border: 1px solid var(--line); border-left: 3px solid var(--harbour);
   border-radius: 6px; font-size: 14px; line-height: 1.55;
   white-space: pre-wrap; }
+.lbpersons { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+.lbpersons li { margin: 2px 0; }
 .lbtrans { margin: 12px 0; padding: 14px 16px; background: #fff;
   border: 1px solid var(--line); border-radius: 6px;
   font-family: Georgia, "Times New Roman", serif; font-style: italic;
