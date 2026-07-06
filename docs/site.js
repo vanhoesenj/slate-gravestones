@@ -331,6 +331,8 @@ function renderGallery(stones) {
 function openLightbox(id) {
   const s = DB.stones.find((x) => x.id === id);
   const c = cemById[s.cem];
+  $("#lbPhotos").classList.toggle("landscape",
+    s.photos.every((p) => (p.w || 0) > (p.h || 0)));
   $("#lbPhotos").innerHTML = s.photos.map((p) =>
     `<div class="lbph">
        <img loading="lazy" src="${imgUrl(p.id, "disp")}" data-id="${p.id}"

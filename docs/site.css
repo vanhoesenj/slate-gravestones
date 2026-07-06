@@ -107,6 +107,7 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
   display: flex; gap: 22px; align-items: flex-start; }
 /* photo column sizes to the image; info takes the middle; text on the right */
 #lbPhotos { flex: 0 1 auto; max-width: 46%; }
+#lbPhotos.landscape { max-width: 58%; }  /* landscape shots get more width */
 #lbInfo { flex: 1 1 240px; min-width: 220px; }
 #lbInfo h3 { margin: 0 0 4px; font-family: "Jost", sans-serif; font-weight: 600;
   font-size: 20px; color: var(--slate-dark); }
@@ -129,10 +130,10 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
   color: var(--paper); border-radius: 999px; width: 36px; height: 36px;
   cursor: pointer; font-family: inherit; font-size: 15px; }
 #lbClose:hover { background: var(--slate-mid); }
-#lbPhotos { display: flex; gap: 10px; overflow-x: auto; }
-.lbph { position: relative; flex: 0 0 auto; }
-#lbPhotos img { max-height: 74vh; border-radius: 6px; cursor: pointer;
-  display: block; max-width: 100%; object-fit: contain; }
+#lbPhotos { display: flex; gap: 10px; overflow-x: auto; min-width: 0; }
+.lbph { position: relative; flex: 0 0 auto; max-width: 100%; min-width: 0; }
+#lbPhotos img { max-height: 74vh; max-width: 100%; width: auto; height: auto;
+  border-radius: 6px; cursor: pointer; display: block; }
 #lbPhotos img.enhanced { outline: 3px solid var(--harbour); }
 .zoomBtn { position: absolute; top: 8px; right: 8px; border: none;
   background: rgba(43,36,51,.65); color: var(--paper); border-radius: 999px;
