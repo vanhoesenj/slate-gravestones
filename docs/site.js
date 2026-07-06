@@ -315,7 +315,8 @@ function openLightbox(id) {
       ${esc(c.name)}, ${esc([c.city, c.state, c.country].filter(Boolean).join(", "))}</div>
     <div class="tags">${DB.categories.map((cat) =>
       (byCat[cat.id] || []).map((n) =>
-        `<span><b>${esc(cat.name)}:</b> ${esc(n)}</span>`).join("")).join("")}</div>`;
+        `<span><b>${esc(cat.name)}:</b> ${esc(n)}</span>`).join("")).join("")}</div>
+    ${s.notes ? `<div class="lbnotes">${esc(s.notes)}</div>` : ""}`;
   $("#lightbox").classList.remove("hidden");
 }
 $("#lbClose").addEventListener("click", () => $("#lightbox").classList.add("hidden"));
