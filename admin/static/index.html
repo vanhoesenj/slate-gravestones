@@ -134,6 +134,13 @@
   <section id="tab-publish" class="tab">
     <h2>Publish</h2>
     <div id="pubStatus"></div>
+    <div class="btnrow" id="draftsRow">
+      <button id="applyDraftsBtn">Apply transcription drafts</button>
+      <span id="draftStatus"></span>
+    </div>
+    <p class="hint">Drafts land in each gravestone's Inscription field prefixed
+      “[DRAFT]” (translations go to Notes) — only where those fields are empty.
+      Search “[DRAFT]” on the Gravestones tab to find entries awaiting review.</p>
     <ol class="steps">
       <li><button id="syncBtn" class="primary">1 · Sync images to Cloudflare R2</button>
           <span id="syncStatus"></span></li>

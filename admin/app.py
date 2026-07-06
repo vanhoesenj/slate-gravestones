@@ -3,7 +3,9 @@
 Run:  python app.py   →  http://localhost:5050
 Everything runs locally; nothing here is exposed to the internet.
 """
+import json
 import os
+import time
 
 from flask import Flask, jsonify, request, send_from_directory, send_file, abort
 
@@ -209,8 +211,8 @@ def stones():
     if request.args.get("untagged") == "1":
         where.append("s.id NOT IN (SELECT stone_id FROM stone_tags)")
     if request.args.get("q"):
-        where.append("(s.title LIKE ? OR s.notes LIKE ?)")
-        params += [f"%{request.args['q']}%"] * 2
+        where.append("(s.title LIKE ? OR s.notes LIKE ? OR s.transcription LIKE ?)")
+        params += [f"%{request.args['q']}%"] * 3
     sql = f"""SELECT s.id, s.cemetery_id, s.title, s.year, s.date_text,
                      c.name AS cemetery,
                      (SELECT id FROM photos WHERE stone_id=s.id
@@ -360,6 +362,62 @@ def do_import():
     con.commit()
     con.close()
     return jsonify({"stone_id": sid, "photos": imported, "errors": errors})
+
+
+# ---------- transcription drafts ----------
+# A drafts file (data/transcription_drafts.json) is a list of
+# {"stone_id": 3, "transcription": "ER COF\nam\n…", "translation": "In memory…"}.
+# Claude (or any OCR pipeline) writes it; the Apply button loads it into empty
+# fields only, prefixed [DRAFT], so it can never overwrite reviewed work.
+
+DRAFTS_PATH = os.path.join(os.path.dirname(__file__), "..", "data",
+                           "transcription_drafts.json")
+
+
+@app.get("/api/drafts/status")
+def drafts_status():
+    if not os.path.exists(DRAFTS_PATH):
+        return jsonify({"found": False})
+    try:
+        with open(DRAFTS_PATH) as f:
+            drafts = json.load(f)
+        return jsonify({"found": True, "count": len(drafts)})
+    except Exception as e:
+        return jsonify({"found": True, "error": str(e)})
+
+
+@app.post("/api/drafts/apply")
+def drafts_apply():
+    if not os.path.exists(DRAFTS_PATH):
+        return jsonify({"error": "No drafts file found."}), 400
+    with open(DRAFTS_PATH) as f:
+        drafts = json.load(f)
+    con = db.connect()
+    applied = skipped = missing = 0
+    for d in drafts:
+        s = con.execute("SELECT transcription, notes FROM stones WHERE id=?",
+                        (d.get("stone_id"),)).fetchone()
+        if not s:
+            missing += 1
+            continue
+        did = False
+        if d.get("transcription") and not (s["transcription"] or "").strip():
+            con.execute("UPDATE stones SET transcription=? WHERE id=?",
+                        ("[DRAFT] " + d["transcription"].strip(),
+                         d["stone_id"]))
+            did = True
+        if d.get("translation") and not (s["notes"] or "").strip():
+            con.execute("UPDATE stones SET notes=? WHERE id=?",
+                        ("[DRAFT translation] " + d["translation"].strip(),
+                         d["stone_id"]))
+            did = True
+        applied += did
+        skipped += not did
+    con.commit()
+    con.close()
+    os.rename(DRAFTS_PATH,
+              DRAFTS_PATH + ".applied-" + time.strftime("%Y%m%d-%H%M%S"))
+    return jsonify({"applied": applied, "skipped": skipped, "missing": missing})
 
 
 # ---------- R2 sync & publish ----------

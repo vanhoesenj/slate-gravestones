@@ -405,6 +405,23 @@ $("#exportBtn").addEventListener("click", async () => {
       `Exported ${r.stones} stones, ${r.cemeteries} cemeteries ✓`;
   } catch (err) { $("#exportStatus").textContent = "Error: " + err.message; }
 });
+async function refreshDrafts() {
+  const s = await api("/api/drafts/status");
+  $("#applyDraftsBtn").disabled = !s.found || s.error;
+  $("#draftStatus").textContent = s.error ? "Drafts file unreadable: " + s.error
+    : s.found ? `${s.count} draft(s) ready to apply`
+    : "No drafts file (ask Claude to transcribe a batch — it writes data/transcription_drafts.json)";
+}
+$("#applyDraftsBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/drafts/apply", { method: "POST" });
+    $("#draftStatus").textContent =
+      `Applied ${r.applied} · skipped ${r.skipped} (fields already filled)` +
+      (r.missing ? ` · ${r.missing} unknown stone id(s)` : "");
+    loadStones(); refreshSummary();
+  } catch (err) { $("#draftStatus").textContent = "Error: " + err.message; }
+});
+
 function renderPubStatus() {
   const s = window._sum || {};
   $("#pubStatus").innerHTML = s.r2_configured
@@ -421,5 +438,9 @@ function renderPubStatus() {
   await loadCats();
   await loadStones();
   renderPubStatus();
-  document.querySelector('[data-tab="publish"]').addEventListener("click", renderPubStatus);
+  refreshDrafts();
+  document.querySelector('[data-tab="publish"]').addEventListener("click", () => {
+    renderPubStatus();
+    refreshDrafts();
+  });
 })();
