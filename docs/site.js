@@ -93,6 +93,8 @@ function fillSelect(sel, items, val) {
   sel.value = val;
 }
 
+const openCats = new Set();  // which sidebar groups the user has expanded
+
 function buildTagFilters() {
   // counts within the current filtered set (ignoring each tag's own filter is
   // fancier; keeping it simple and fast)
@@ -102,12 +104,24 @@ function buildTagFilters() {
     const tags = DB.tags.filter((t) => t.cat === cat.id &&
       ((counts[t.id] || 0) > 0 || F.tags.has(t.id)));
     if (!tags.length) return "";
-    return `<div class="tgroup"><h3>${esc(cat.name)}</h3><div class="chips">` +
+    // a group with an active selection stays open
+    const open = openCats.has(cat.id) || tags.some((t) => F.tags.has(t.id));
+    return `<div class="tgroup ${open ? "open" : ""}" data-cat="${cat.id}">
+      <h3>${esc(cat.name)} <span class="tw">${open ? "▾" : "▸"}</span></h3>
+      <div class="chips">` +
       tags.map((t) =>
         `<span class="chip ${F.tags.has(t.id) ? "on" : ""}" data-id="${t.id}">
            ${esc(t.name)} <span class="n">${counts[t.id] || 0}</span></span>`).join("") +
       `</div></div>`;
   }).join("");
+  $("#tagFilters").querySelectorAll(".tgroup h3").forEach((h) =>
+    h.addEventListener("click", () => {
+      const g = h.parentElement, id = +g.dataset.cat;
+      g.classList.toggle("open");
+      h.querySelector(".tw").textContent =
+        g.classList.contains("open") ? "▾" : "▸";
+      g.classList.contains("open") ? openCats.add(id) : openCats.delete(id);
+    }));
   $("#tagFilters").querySelectorAll(".chip").forEach((chip) =>
     chip.addEventListener("click", () => {
       const id = +chip.dataset.id;
@@ -352,22 +366,23 @@ function openLightbox(id) {
     const tag = tagById[t];
     if (tag) (byCat[tag.cat] = byCat[tag.cat] || []).push(tag.name);
   }
-  $("#lbMeta").innerHTML = `
-    <div class="lbhint">◐ Click a photo to flip between the original and an
-      enhanced view that brings out carving and inscriptions.</div>
+  $("#lbInfo").innerHTML = `
     <h3>${esc(s.title) || "Unnamed gravestone"}${yearsOf(s)}</h3>
     <div class="where">${esc(c.name)}, ${esc([c.city, c.state, c.country].filter(Boolean).join(", "))}</div>
     ${(s.persons || []).length > 1 || ((s.persons || [])[0]?.name && s.persons[0].name !== s.title)
       ? `<ul class="lbpersons">${s.persons.map((p) => `<li>${personLine(p)}</li>`).join("")}</ul>` : ""}
-    ${s.trans ? `<div class="lbtrans">${esc(s.trans)}</div>` : ""}
     <div class="tags">${DB.categories.map((cat) =>
       (byCat[cat.id] || []).map((n) =>
         `<span><b>${esc(cat.name)}:</b> ${esc(n)}</span>`).join("")).join("")}</div>
-    ${s.notes ? `<div class="lbnotes">${esc(s.notes)}</div>` : ""}
     <div class="lbbtns">
       <button id="cmpBtn"></button>
       <button id="linkBtn" title="Copy a direct link to this gravestone">🔗 copy link</button>
-    </div>`;
+    </div>
+    <div class="lbhint">◐ Click a photo to flip between the original and an
+      enhanced view that brings out carving and inscriptions.</div>`;
+  $("#lbText").innerHTML =
+    (s.trans ? `<h4>Inscription</h4><div class="lbtrans">${esc(s.trans)}</div>` : "") +
+    (s.notes ? `<h4>Notes / translation</h4><div class="lbnotes">${esc(s.notes)}</div>` : "");
   const cmpBtn = $("#cmpBtn");
   cmpBtn.textContent = compareId && compareId !== id
     ? "⇄ Compare with selected" : compareId === id

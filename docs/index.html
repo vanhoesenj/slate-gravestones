@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-<link rel="stylesheet" href="site.css?v=8">
+<link rel="stylesheet" href="site.css?v=9">
 </head>
 <body>
 <header>
@@ -68,10 +68,11 @@
 </div>
 
 <div id="lightbox" class="hidden">
+  <button id="lbClose">✕</button>
   <div id="lbCard">
-    <button id="lbClose">✕</button>
     <div id="lbPhotos"></div>
-    <div id="lbMeta"></div>
+    <div id="lbInfo"></div>
+    <div id="lbText"></div>
   </div>
 </div>
 
@@ -101,6 +102,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="site.js?v=8"></script>
+<script src="site.js?v=9"></script>
 </body>
 </html>
