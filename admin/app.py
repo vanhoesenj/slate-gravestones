@@ -15,6 +15,9 @@ import r2
 import publish as publish_mod
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
+# never cache admin assets — a stale cached page after an update can save
+# incomplete data
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 db.init()
 
 
@@ -246,14 +249,18 @@ def stone(sid):
 
 @app.put("/api/stones/<int:sid>")
 def edit_stone(sid):
+    """Partial update: only fields present in the payload are written, so an
+    out-of-date client can never blank a field it doesn't know about."""
     d = request.json
+    allowed = ["title", "year", "birth_year", "date_text", "notes",
+               "transcription", "cemetery_id"]
+    sets = [f"{k}=?" for k in allowed if k in d]
+    vals = [d[k] for k in allowed if k in d]
+    if not sets:
+        return jsonify({"ok": True})
     con = db.connect()
-    con.execute(
-        "UPDATE stones SET title=?, year=?, birth_year=?, date_text=?, notes=?, "
-        "transcription=?, cemetery_id=? WHERE id=?",
-        (d.get("title", ""), d.get("year"), d.get("birth_year"),
-         d.get("date_text", ""), d.get("notes", ""),
-         d.get("transcription", ""), d["cemetery_id"], sid))
+    con.execute(f"UPDATE stones SET {', '.join(sets)} WHERE id=?",
+                (*vals, sid))
     con.commit()
     con.close()
     return jsonify({"ok": True})
