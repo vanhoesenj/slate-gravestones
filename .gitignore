@@ -4,6 +4,9 @@ config.json
 # Local image derivatives (they live on R2; media/ can be regenerated)
 admin/media/
 
+# Transcription draft files (transient; content ends up in the database)
+data/transcription_drafts.json*
+
 __pycache__/
 *.pyc
 .DS_Store
