@@ -63,28 +63,50 @@ On GitHub: repo → **Settings → Pages → Deploy from a branch →
 push. (Custom domain later: add it under Pages settings and site paths need
 no changes — everything is relative.)
 
-## Daily workflow
+## The workflow
 
-1. `python3 admin/app.py` → open http://localhost:5050
-2. **Cemeteries** — add a cemetery; click the map or use the place search to
-   set its location.
-3. **Import** — scan your photo folder; already-imported photos are skipped
-   automatically. Select photos and import "one stone per photo", or select
-   several shots of the same marker and import "as ONE stone". Derivatives
-   (480px thumb + 2000px display JPEG) are generated locally; originals are
-   never modified or uploaded.
-4. **Stones** — click a stone: set name/date, pick a Shape (single-select),
-   toggle Iconography chips, "+ add" creates a new tag on the spot. The
-   "untagged only" filter is your to-do list.
-5. **Tags** tab — add whole new categories (e.g. Carver, Condition) anytime;
-   they appear immediately in the editor and as site filters after publishing.
-6. **Publish** — ① sync images to R2 ② export `library.json` ③ commit & push:
+Start the admin whenever you're working: `python3 admin/app.py` →
+http://localhost:5050. Nothing is public until step 7, so work in any order
+and publish when ready.
+
+1. **Add photos** to the Google Drive source folder — one subfolder per
+   cemetery works best (the folder name auto-matches the cemetery on import).
+2. **Cemeteries tab** (new cemeteries only) — add it, click the map or use
+   the place search to set its location.
+3. **Import tab** — Scan; already-imported photos are skipped automatically.
+   Photos appear grouped by folder with a "select folder" button. Import
+   "one gravestone per photo", or select several shots of the same marker and
+   import "as ONE gravestone". Derivatives are generated locally (thumbnail,
+   display, and a CLAHE-enhanced version that brings out worn carving);
+   originals are never modified.
+4. **Transcription drafts** (optional but worth it) — ask Claude in Cowork to
+   "transcribe the new gravestones" (it reads the enhanced images and writes
+   `data/transcription_drafts.json`), or let the scheduled task do it Friday
+   night. Then Publish tab → **Apply transcription drafts**. Drafts land
+   prefixed `[DRAFT]` and only ever fill empty fields; search "[DRAFT]" on
+   the Gravestones tab to find entries awaiting your review.
+5. **Outlines** (optional) — `python3 scripts/extract_outlines.py` traces
+   silhouettes for any photos it hasn't tried yet, then review in the
+   **Outlines tab**: approve ✓ or reject ✕. Only approved outlines publish
+   (they power the site's Photos ⁄ Outlines gallery toggle).
+6. **Gravestones tab** — the editing pass: title, people on the stone
+   (name/birth/death rows — add as many as the marker carries), correct the
+   inscription draft and remove its `[DRAFT]` prefix, notes/translation, and
+   the tag chips (Shape, Iconography, Marker Type, Condition — "+ add"
+   creates new tags on the spot; whole new categories via the Tags tab).
+   The "untagged only" checkbox is your tagging to-do list.
+7. **Publish tab** — ① **Sync images to R2** (needed only when there are new
+   or rebuilt images; harmless otherwise) ② **Export library.json**
+   ③ commit & push — GitHub Desktop, or:
 
    ```bash
-   git add docs/data/library.json
+   git add -A
    git commit -m "Update library"
    git push
    ```
+
+   The live site updates a minute or two after the push. Tag-only or
+   text-only edits still need ② and ③ — but not ①.
 
 ## Gravestone outlines (silhouette library)
 
