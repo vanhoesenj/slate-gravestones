@@ -407,6 +407,35 @@ $("#catForm").addEventListener("submit", async (e) => {
   } catch (err) { alert(err.message); }
 });
 
+/* ---------- outlines review ---------- */
+async function loadOutlines() {
+  const r = await api("/api/outlines?status=" + $("#olStatus").value);
+  const c = r.counts;
+  $("#olCounts").textContent =
+    `${c.draft || 0} awaiting · ${c.approved || 0} approved · ${c.rejected || 0} rejected`;
+  $("#olGrid").innerHTML = r.photos.map((p) => `
+    <div class="card olcard">
+      <div class="olpair">
+        <img loading="lazy" src="/media/${p.id}/thumb.jpg">
+        ${p.d ? `<svg viewBox="0 0 100 ${p.h}" preserveAspectRatio="xMidYMid meet">
+          <path d="${p.d}" fill="#4a3f63"/></svg>` : "<span class='hint'>no outline</span>"}
+      </div>
+      <div class="cap">#${p.stone_id} ${esc(p.title || "")}${p.is_primary ? " ★" : ""}
+        <em>${p.status}</em></div>
+      <div class="btnrow olbtns">
+        <button data-id="${p.id}" data-s="approved" ${p.status === "approved" ? "disabled" : ""}>✓ approve</button>
+        <button data-id="${p.id}" data-s="rejected" ${p.status === "rejected" ? "disabled" : ""}>✕ reject</button>
+      </div>
+    </div>`).join("") || "<p class='hint'>Nothing here.</p>";
+  $("#olGrid").querySelectorAll(".olbtns button").forEach((b) =>
+    b.addEventListener("click", async () => {
+      await api(`/api/photos/${b.dataset.id}/outline`, { method: "PUT",
+        body: { status: b.dataset.s } });
+      loadOutlines();
+    }));
+}
+$("#olStatus").addEventListener("change", loadOutlines);
+
 /* ---------- publish ---------- */
 $("#syncBtn").addEventListener("click", async () => {
   $("#syncStatus").textContent = "Syncing…";
@@ -468,4 +497,6 @@ function renderPubStatus() {
     renderPubStatus();
     refreshDrafts();
   });
+  document.querySelector('[data-tab="outlines"]').addEventListener("click",
+    loadOutlines);
 })();

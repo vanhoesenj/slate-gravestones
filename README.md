@@ -86,6 +86,23 @@ no changes — everything is relative.)
    git push
    ```
 
+## Gravestone outlines (silhouette library)
+
+One-time: `pip3 install rembg onnxruntime` (first run downloads a ~170MB
+segmentation model). Then:
+
+1. `python3 scripts/extract_outlines.py` — segments each photo, traces the
+   stone's silhouette, saves it as a draft. Front-on shots work best; angled
+   or context shots may fail or come out skewed (that's what review is for).
+2. Admin → **Outlines** tab: each draft shows the photo beside its traced
+   silhouette — approve ✓ or reject ✕. Only approved outlines publish.
+3. Export + push. The public site's gallery gets a Photos ⁄ Outlines toggle;
+   outlines inherit all filters, so "ogee tops by decade, as silhouettes" is
+   two clicks.
+
+Re-run the script anytime — it only processes photos it hasn't tried yet
+(`--force` redoes everything, `--photo N` targets one).
+
 ## Notes & gotchas
 
 - **Dropbox + git**: this repo lives in Dropbox. Dropbox syncing `.git/` can

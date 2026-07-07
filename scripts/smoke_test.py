@@ -117,6 +117,18 @@ def main():
     assert len(st["persons"]) == 2 and st["year"] == 1852, st
     print("persons ok:", [p["name"] for p in st["persons"]])
 
+    # outlines: draft -> approve -> published
+    con = __import__("db").connect()
+    con.execute("UPDATE photos SET outline_path='M0,0L100,0L100,120L0,120Z', "
+                "outline_h=120, outline_status='draft' WHERE id=?",
+                (s1["photos"][0],))
+    con.commit(); con.close()
+    ol = call("get", "/api/outlines?status=draft")
+    assert any(p["id"] == s1["photos"][0] for p in ol["photos"])
+    call("put", f"/api/photos/{s1['photos'][0]}/outline",
+         json={"status": "approved"})
+    print("outline review ok")
+
     # primary photo swap
     call("put", f"/api/photos/{s1['photos'][1]}/primary")
 
@@ -130,6 +142,7 @@ def main():
     assert data["stones"][0]["photos"][0]["id"] == s1["photos"][1]  # primary first
     assert any(t["name"] == "Zerubbabel Collins" for t in data["tags"])
     assert len(data["stones"][0]["persons"]) == 2
+    assert data["stones"][0]["outline"]["h"] == 120  # approved outline exported
     print("library.json ok:", {k: len(v) for k, v in data.items() if isinstance(v, list)})
 
     # stones list filters

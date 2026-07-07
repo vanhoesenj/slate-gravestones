@@ -44,10 +44,20 @@ def export():
             "FROM photos ORDER BY is_primary DESC, id"):
         photos_by_stone.setdefault(r["stone_id"], []).append(
             {"id": r["id"], "w": r["w"], "h": r["h"]})
+    # approved outlines only; primary photo's outline wins
+    outline_by_stone = {}
+    for r in con.execute(
+            "SELECT stone_id, outline_path AS d, outline_h AS h FROM photos "
+            "WHERE outline_status='approved' AND outline_path != '' "
+            "ORDER BY is_primary DESC, id"):
+        outline_by_stone.setdefault(r["stone_id"],
+                                    {"d": r["d"], "h": r["h"]})
     for s in stones:
         rec = dict(s)
         rec["persons"] = persons_by_stone.get(s["id"], [])
         rec["tags"] = tags_by_stone.get(s["id"], [])
+        if s["id"] in outline_by_stone:
+            rec["outline"] = outline_by_stone[s["id"]]
         rec["photos"] = photos_by_stone.get(s["id"], [])
         if rec["photos"]:  # only publish stones that have at least one photo
             data["stones"].append(rec)

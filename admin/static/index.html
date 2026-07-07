@@ -15,6 +15,7 @@
     <button data-tab="import">Import</button>
     <button data-tab="stones">Gravestones</button>
     <button data-tab="tags">Tags</button>
+    <button data-tab="outlines">Outlines</button>
     <button data-tab="publish">Publish</button>
   </nav>
   <div id="summary"></div>
@@ -127,6 +128,26 @@
       <label class="chk"><input type="checkbox" id="catSingle"> single-select</label>
       <button class="primary">Add category</button>
     </form>
+  </section>
+
+  <!-- OUTLINES -->
+  <section id="tab-outlines" class="tab">
+    <h2>Gravestone outlines</h2>
+    <p class="hint">Extract silhouettes with
+      <code>python3 scripts/extract_outlines.py</code> (see README), then review
+      here. Only <strong>approved</strong> outlines are published. The photo is
+      shown beside its traced outline — approve if the silhouette matches the
+      stone's true shape.</p>
+    <div class="btnrow">
+      <select id="olStatus">
+        <option value="draft">awaiting review</option>
+        <option value="approved">approved</option>
+        <option value="rejected">rejected</option>
+        <option value="all">all</option>
+      </select>
+      <span id="olCounts"></span>
+    </div>
+    <div id="olGrid" class="photogrid"></div>
   </section>
 
   <!-- PUBLISH -->

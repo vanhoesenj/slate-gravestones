@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS photos (
     taken TEXT DEFAULT '',            -- EXIF DateTimeOriginal if present
     is_primary INTEGER DEFAULT 0,
     r2_synced INTEGER DEFAULT 0,
+    outline_path TEXT DEFAULT '',     -- normalized SVG path (viewBox 0 0 100 h)
+    outline_h REAL,                   -- viewBox height matching outline_path
+    outline_status TEXT DEFAULT '',   -- '', 'draft', 'approved', 'rejected'
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -118,6 +121,12 @@ def init():
         con.commit()
     if "transcription" not in cols:
         con.execute("ALTER TABLE stones ADD COLUMN transcription TEXT DEFAULT ''")
+        con.commit()
+    pcols = [r["name"] for r in con.execute("PRAGMA table_info(photos)")]
+    if "outline_path" not in pcols:
+        con.execute("ALTER TABLE photos ADD COLUMN outline_path TEXT DEFAULT ''")
+        con.execute("ALTER TABLE photos ADD COLUMN outline_h REAL")
+        con.execute("ALTER TABLE photos ADD COLUMN outline_status TEXT DEFAULT ''")
         con.commit()
     # backfill persons from legacy single-name stones (runs once)
     if (con.execute("SELECT COUNT(*) FROM persons").fetchone()[0] == 0 and

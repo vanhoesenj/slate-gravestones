@@ -9,6 +9,7 @@ const F = { country: "", state: "", cemetery: "", yearMin: null, yearMax: null,
             tags: new Set(), q: "" };
 const GALLERY_PAGE = 120;
 let galleryShown = GALLERY_PAGE;
+let galleryView = "photos";  // "photos" | "outlines"
 
 const PALETTE = ["#4a3f63", "#b3823c", "#7c6a9c", "#5a6470", "#9b3b7a",
   "#4a7c59", "#b3552f", "#6d8196", "#8c7a4e", "#54838c", "#8c4e5b", "#2b2433"];
@@ -417,15 +418,26 @@ function renderDecadeChart(stones) {
 
 /* ---------- gallery & lightbox ---------- */
 function renderGallery(stones) {
-  $("#galleryHead").textContent =
-    `${stones.length} gravestone${stones.length === 1 ? "" : "s"}`;
+  const withOutline = stones.filter((s) => s.outline).length;
+  $("#galleryHead").textContent = galleryView === "outlines"
+    ? `${withOutline} of ${stones.length} gravestones have outlines`
+    : `${stones.length} gravestone${stones.length === 1 ? "" : "s"}`;
   const shown = stones.slice(0, galleryShown);
   $("#gallery").innerHTML = shown.map((s) => {
     const c = cemById[s.cem];
+    const cap = `<div class="cap">${esc(s.title) || "Unnamed"}${yearsOf(s)}
+        <span class="where">${esc(c.name)}, ${esc(c.state || c.country)}</span></div>`;
+    if (galleryView === "outlines") {
+      return `<div class="stone outlineCard" data-id="${s.id}">
+        ${s.outline
+          ? `<svg viewBox="0 0 100 ${s.outline.h}" preserveAspectRatio="xMidYMax meet">
+               <path d="${s.outline.d}"/></svg>`
+          : `<div class="noOutline">no outline yet</div>`}
+        ${cap}</div>`;
+    }
     return `<div class="stone" data-id="${s.id}">
       <img loading="lazy" src="${imgUrl(s.photos[0].id, "thumb")}" alt="">
-      <div class="cap">${esc(s.title) || "Unnamed"}${yearsOf(s)}
-        <span class="where">${esc(c.name)}, ${esc(c.state || c.country)}</span></div>
+      ${cap}
     </div>`;
   }).join("") +
   (stones.length > galleryShown
@@ -661,6 +673,14 @@ $("#zoomview").addEventListener("pointermove", (e) => {
     if (ev === "pointerup" && was === 1 && zvMoved < 6 &&
         !e.target.closest("#zvBar"))
       zvFlip();   // a true click (no drag) flips original/enhanced
+  }));
+
+document.querySelectorAll("#viewToggle button").forEach((b) =>
+  b.addEventListener("click", () => {
+    galleryView = b.dataset.v;
+    document.querySelectorAll("#viewToggle button").forEach((x) =>
+      x.classList.toggle("on", x === b));
+    renderGallery(filteredStones());
   }));
 
 /* ---------- update cycle ---------- */

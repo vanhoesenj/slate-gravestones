@@ -397,6 +397,40 @@ def do_import():
     return jsonify({"stone_id": sid, "photos": imported, "errors": errors})
 
 
+# ---------- outlines ----------
+
+@app.get("/api/outlines")
+def outlines():
+    status = request.args.get("status", "draft")
+    con = db.connect()
+    where = "p.outline_status != ''" if status == "all" else "p.outline_status = ?"
+    params = [] if status == "all" else [status]
+    rows = [dict(r) for r in con.execute(
+        f"""SELECT p.id, p.stone_id, p.outline_path AS d, p.outline_h AS h,
+                   p.outline_status AS status, p.is_primary,
+                   s.title, c.name AS cemetery
+            FROM photos p JOIN stones s ON s.id=p.stone_id
+            JOIN cemeteries c ON c.id=s.cemetery_id
+            WHERE {where} ORDER BY p.id""", params)]
+    counts = {r["outline_status"]: r["n"] for r in con.execute(
+        "SELECT outline_status, COUNT(*) n FROM photos "
+        "WHERE outline_status != '' GROUP BY outline_status")}
+    con.close()
+    return jsonify({"photos": rows, "counts": counts})
+
+
+@app.put("/api/photos/<int:pid>/outline")
+def set_outline_status(pid):
+    status = request.json.get("status")
+    if status not in ("draft", "approved", "rejected"):
+        return jsonify({"error": "bad status"}), 400
+    con = db.connect()
+    con.execute("UPDATE photos SET outline_status=? WHERE id=?", (status, pid))
+    con.commit()
+    con.close()
+    return jsonify({"ok": True})
+
+
 # ---------- transcription drafts ----------
 # A drafts file (data/transcription_drafts.json) is a list of
 # {"stone_id": 3, "transcription": "ER COF\nam\n…", "translation": "In memory…"}.
