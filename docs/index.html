@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-<link rel="stylesheet" href="site.css?v=10">
+<link rel="stylesheet" href="site.css?v=11">
 </head>
 <body>
 <header>
@@ -52,6 +52,11 @@
           <option value="state">state/province</option>
           <option value="cemetery">cemetery</option>
           <option value="decade">decade</option>
+        </select></label>
+        <label>Timeline <select id="chart2Sel">
+          <option value="decade">gravestones by decade</option>
+          <option value="age">age at death</option>
+          <option value="lang">inscription language</option>
         </select></label>
       </div>
       <div class="chartRow">
@@ -102,6 +107,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="site.js?v=10"></script>
+<script src="site.js?v=11"></script>
 </body>
 </html>

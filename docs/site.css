@@ -201,6 +201,22 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
   #lbMeta { flex: none; width: 100%; }
 }
 
+/* cemetery profile popup on the map */
+.maplibregl-popup-content { background: var(--paper); border-radius: 8px;
+  box-shadow: 0 3px 14px rgba(43,36,51,.4); padding: 12px 14px;
+  font-family: "Source Sans 3", sans-serif; color: var(--ink); }
+.cemPopup strong { font-family: "Jost", sans-serif; font-size: 14.5px;
+  color: var(--slate-dark); display: block; }
+.cemPopup > span { color: var(--ordovician); font-size: 12.5px; display: block;
+  margin-bottom: 6px; }
+.cemPopup table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+.cemPopup td { padding: 2px 0; }
+.cemPopup td:first-child { color: var(--ordovician); padding-right: 12px;
+  white-space: nowrap; }
+.cemPopup a { display: inline-block; margin-top: 7px; color: var(--slate-mid);
+  font-size: 13px; }
+.cemPopup a:hover { color: var(--harbour); }
+
 footer { background: var(--paper); border-top: 1px solid #e4e0ea;
   text-align: center; color: var(--ordovician); font-size: 12.5px;
   padding: 14px 20px; }

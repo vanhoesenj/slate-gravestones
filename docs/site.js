@@ -186,12 +186,9 @@ function initMap() {
     });
     map.on("click", "cem-circles", (e) => {
       const p = e.features[0].properties;
-      new maplibregl.Popup({ offset: 10 })
+      new maplibregl.Popup({ offset: 10, maxWidth: "290px" })
         .setLngLat(e.features[0].geometry.coordinates)
-        .setHTML(`<strong>${esc(p.name)}</strong><br>
-          ${esc([p.city, p.state].filter(Boolean).join(", "))}<br>
-          ${p.count} gravestone(s) shown ·
-          <a href="#" onclick="setCem(${p.id});return false">filter to this cemetery</a>`)
+        .setHTML(cemProfileHTML(p.id))
         .addTo(map);
     });
     map.on("mouseenter", "cem-circles", () => map.getCanvas().style.cursor = "pointer");
@@ -199,6 +196,48 @@ function initMap() {
     fitToData();
   });
 }
+function cemProfileHTML(cemId) {
+  const c = cemById[cemId];
+  const list = filteredStones().filter((s) => s.cem === cemId);
+  // death-year span across all persons (falling back to stone year)
+  const years = [];
+  for (const s of list) {
+    for (const p of (s.persons || [])) if (p.death) years.push(p.death);
+    if (!(s.persons || []).some((p) => p.death) && s.year) years.push(s.year);
+  }
+  const span = years.length
+    ? `${Math.min(...years)}–${Math.max(...years)}` : "—";
+  // most common shape among these stones
+  const shapeCat = DB.categories.find((x) => x.name === "Shape");
+  let topShape = "";
+  if (shapeCat) {
+    const freq = {};
+    for (const s of list) for (const t of s.tags) {
+      const tag = tagById[t];
+      if (tag && tag.cat === shapeCat.id) freq[tag.name] = (freq[tag.name] || 0) + 1;
+    }
+    const top = Object.entries(freq).sort((a, b) => b[1] - a[1])[0];
+    if (top) topShape = `${top[0]} (${top[1]})`;
+  }
+  // language mix among inscribed stones
+  const langs = list.map(langOf).filter(Boolean);
+  const welsh = langs.filter((L) => L !== "English").length;
+  const langLine = langs.length
+    ? `${Math.round(100 * welsh / langs.length)}% Welsh of ${langs.length} inscribed`
+    : "no transcriptions yet";
+  return `<div class="cemPopup">
+    <strong>${esc(c.name)}</strong>
+    <span>${esc([c.city, c.state].filter(Boolean).join(", "))}</span>
+    <table>
+      <tr><td>Gravestones</td><td>${list.length}${F.tags.size || F.q || F.yearMin != null || F.yearMax != null ? " (filtered)" : ""}</td></tr>
+      <tr><td>Death years</td><td>${span}</td></tr>
+      ${topShape ? `<tr><td>Top shape</td><td>${esc(topShape)}</td></tr>` : ""}
+      <tr><td>Language</td><td>${langLine}</td></tr>
+    </table>
+    <a href="#" onclick="setCem(${cemId});return false">filter to this cemetery →</a>
+  </div>`;
+}
+
 window.setCem = (id) => {
   F.cemetery = String(id);
   const c = cemById[id];
@@ -286,6 +325,76 @@ function renderTagChart(stones) {
     },
   });
 }
+/* Welsh/English detection from the transcription (formulaic phrases) */
+function langOf(s) {
+  const t = (s.trans || "").replace(/\[DRAFT\]\s*/g, "").toLowerCase();
+  if (t.trim().length < 8) return null;
+  const w = (t.match(/\b(er cof|bu farw|fu farw|ganwyd|mlwydd|blwydd|flwydd|oed|priod|mab|merch|yr hwn|yr hon|hedd|diwrnod|wythnos|hunodd|gorphwys)\b/g) || []).length;
+  const e = (t.match(/\b(in memory|memory of|died|born|aged|wife|son of|daughter|departed|this life|years|months)\b/g) || []).length;
+  if (w && e) return w >= e * 2 ? "Welsh" : e >= w * 2 ? "English" : "Mixed";
+  return w ? "Welsh" : e ? "English" : null;
+}
+
+const AGE_BINS = [[0, 4], [5, 14], [15, 24], [25, 34], [35, 44], [45, 54],
+                  [55, 64], [65, 74], [75, 120]];
+
+function renderChart2(stones) {
+  const mode = $("#chart2Sel").value;
+  if (mode === "decade") return renderDecadeChart(stones);
+  decadeChart?.destroy();
+  if (mode === "age") {
+    const counts = AGE_BINS.map(() => 0);
+    let n = 0;
+    for (const s of stones) for (const p of (s.persons || [])) {
+      if (p.birth && p.death) {
+        const age = p.death - p.birth;
+        const i = AGE_BINS.findIndex(([a, b]) => age >= a && age <= b);
+        if (i >= 0) { counts[i]++; n++; }
+      }
+    }
+    decadeChart = new Chart($("#decadeChart"), {
+      type: "bar",
+      data: { labels: AGE_BINS.map(([a, b]) => b > 110 ? a + "+" : `${a}–${b}`),
+              datasets: [{ label: "people", data: counts,
+                           backgroundColor: "#7c6a9c" }] },
+      options: { maintainAspectRatio: false, responsive: true,
+        plugins: { legend: { display: false },
+                   title: { display: true,
+                            text: `Age at death — ${n} people` } },
+        scales: { y: { ticks: { precision: 0 } } } },
+    });
+    return;
+  }
+  // mode === "lang": inscription language by decade, stacked
+  const LANGS = ["Welsh", "Mixed", "English"];
+  const COLORS = { Welsh: "#4a3f63", Mixed: "#7c6a9c", English: "#b3823c" };
+  const per = {};  // decade -> lang -> n
+  let n = 0;
+  for (const s of stones) {
+    const L = langOf(s);
+    if (!L || !s.year) continue;
+    const d = Math.floor(s.year / 10) * 10;
+    (per[d] = per[d] || {})[L] = (per[d][L] || 0) + 1;
+    n++;
+  }
+  const decades = Object.keys(per).map(Number).sort((a, b) => a - b);
+  decadeChart = new Chart($("#decadeChart"), {
+    type: "bar",
+    data: { labels: decades.map((d) => d + "s"),
+            datasets: LANGS.map((L) => ({
+              label: L, data: decades.map((d) => per[d][L] || 0),
+              backgroundColor: COLORS[L], stack: "s" })) },
+    options: { maintainAspectRatio: false, responsive: true,
+      plugins: { legend: { position: "bottom",
+                           labels: { boxWidth: 12, font: { size: 11 } } },
+                 title: { display: true,
+                          text: `Inscription language — ${n} inscribed` } },
+      scales: { x: { stacked: true },
+                y: { stacked: true, ticks: { precision: 0 } } } },
+  });
+}
+$("#chart2Sel").addEventListener("change", () => renderChart2(filteredStones()));
+
 function renderDecadeChart(stones) {
   const per = {};
   for (const s of stones) if (s.year)
@@ -562,7 +671,7 @@ function update() {
   const stones = filteredStones();
   renderGallery(stones);
   renderTagChart(stones);
-  renderDecadeChart(stones);
+  renderChart2(stones);
   if (map?.getSource("cems")) {
     map.getSource("cems").setData(cemGeojson());
     fitToData();
