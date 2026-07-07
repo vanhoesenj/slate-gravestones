@@ -133,11 +133,14 @@
   <!-- OUTLINES -->
   <section id="tab-outlines" class="tab">
     <h2>Gravestone outlines</h2>
-    <p class="hint">Extract silhouettes with
-      <code>python3 scripts/extract_outlines.py</code> (see README), then review
-      here. Only <strong>approved</strong> outlines are published. The photo is
-      shown beside its traced outline — approve if the silhouette matches the
+    <p class="hint">Trace silhouettes from new photos, then review below. Only
+      <strong>approved</strong> outlines are published. The photo is shown
+      beside its traced outline — approve if the silhouette matches the
       stone's true shape.</p>
+    <div class="btnrow">
+      <button id="olExtract" class="primary">Trace new outlines</button>
+      <span id="olProg"></span>
+    </div>
     <div class="btnrow">
       <select id="olStatus">
         <option value="draft">awaiting review</option>

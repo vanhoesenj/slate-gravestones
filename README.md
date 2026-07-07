@@ -85,10 +85,12 @@ and publish when ready.
    night. Then Publish tab → **Apply transcription drafts**. Drafts land
    prefixed `[DRAFT]` and only ever fill empty fields; search "[DRAFT]" on
    the Gravestones tab to find entries awaiting your review.
-5. **Outlines** (optional) — `python3 scripts/extract_outlines.py` traces
-   silhouettes for any photos it hasn't tried yet, then review in the
-   **Outlines tab**: approve ✓ or reject ✕. Only approved outlines publish
-   (they power the site's Photos ⁄ Outlines gallery toggle).
+5. **Outlines** (optional) — Outlines tab → **Trace new outlines** traces
+   silhouettes for any photos it hasn't tried yet (runs in the background;
+   progress shown), then review: approve ✓ or reject ✕. Only approved
+   outlines publish (they power the site's Photos ⁄ Outlines gallery toggle).
+   Needs `pip3 install rembg onnxruntime` once; a CLI equivalent lives at
+   `scripts/extract_outlines.py` (supports `--force` / `--photo N`).
 6. **Gravestones tab** — the editing pass: title, people on the stone
    (name/birth/death rows — add as many as the marker carries), correct the
    inscription draft and remove its `[DRAFT]` prefix, notes/translation, and
@@ -110,20 +112,22 @@ and publish when ready.
 
 ## Gravestone outlines (silhouette library)
 
-One-time: `pip3 install rembg onnxruntime` (first run downloads a ~170MB
-segmentation model). Then:
+One-time: `pip3 install rembg onnxruntime` and restart the admin app (first
+trace downloads a ~170MB segmentation model). Then:
 
-1. `python3 scripts/extract_outlines.py` — segments each photo, traces the
-   stone's silhouette, saves it as a draft. Front-on shots work best; angled
-   or context shots may fail or come out skewed (that's what review is for).
-2. Admin → **Outlines** tab: each draft shows the photo beside its traced
-   silhouette — approve ✓ or reject ✕. Only approved outlines publish.
+1. Admin → **Outlines** tab → **Trace new outlines** — segments each new
+   photo in the background and saves draft silhouettes. Front-on shots work
+   best; angled or context shots may fail or come out skewed (that's what
+   review is for).
+2. Same tab: each draft shows the photo beside its traced silhouette —
+   approve ✓ or reject ✕. Only approved outlines publish.
 3. Export + push. The public site's gallery gets a Photos ⁄ Outlines toggle;
    outlines inherit all filters, so "ogee tops by decade, as silhouettes" is
    two clicks.
 
-Re-run the script anytime — it only processes photos it hasn't tried yet
-(`--force` redoes everything, `--photo N` targets one).
+Tracing only touches photos it hasn't tried yet. The CLI equivalent,
+`scripts/extract_outlines.py`, adds `--force` (redo everything) and
+`--photo N` (redo one, e.g. after swapping in a better front-on photo).
 
 ## Notes & gotchas
 

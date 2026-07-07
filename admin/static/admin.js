@@ -436,6 +436,32 @@ async function loadOutlines() {
 }
 $("#olStatus").addEventListener("change", loadOutlines);
 
+$("#olExtract").addEventListener("click", async () => {
+  $("#olExtract").disabled = true;
+  try {
+    const r = await api("/api/outlines/extract", { method: "POST", body: {} });
+    if (!r.started) {
+      $("#olProg").textContent = r.msg;
+      $("#olExtract").disabled = false;
+      return;
+    }
+    pollOutlineProgress();
+  } catch (err) {
+    $("#olProg").textContent = err.message;
+    $("#olExtract").disabled = false;
+  }
+});
+async function pollOutlineProgress() {
+  const p = await api("/api/outlines/progress");
+  $("#olProg").textContent = p.running
+    ? `${p.done}/${p.total} — ${p.msg}` : p.msg;
+  if (p.running) setTimeout(pollOutlineProgress, 1500);
+  else {
+    $("#olExtract").disabled = false;
+    loadOutlines();
+  }
+}
+
 /* ---------- publish ---------- */
 $("#syncBtn").addEventListener("click", async () => {
   $("#syncStatus").textContent = "Syncing…";

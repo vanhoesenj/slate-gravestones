@@ -5,6 +5,7 @@ Everything runs locally; nothing here is exposed to the internet.
 """
 import json
 import os
+import threading
 import time
 
 from flask import Flask, jsonify, request, send_from_directory, send_file, abort
@@ -398,6 +399,69 @@ def do_import():
 
 
 # ---------- outlines ----------
+
+OUTLINE_PROG = {"running": False, "total": 0, "done": 0, "ok": 0,
+                "failed": 0, "msg": ""}
+
+
+def _outline_worker(ids):
+    import outline_core
+    try:
+        OUTLINE_PROG["msg"] = "loading model (first run downloads ~170MB)…"
+        outline_core.get_session()
+        con = db.connect()
+        for pid in ids:
+            OUTLINE_PROG["msg"] = f"tracing photo #{pid}…"
+            _thumb, disp, _enh = images.derivative_paths(pid)
+            d, h = (outline_core.extract(disp) if os.path.exists(disp)
+                    else (None, "no display file"))
+            if d is None:
+                con.execute("UPDATE photos SET outline_status='rejected', "
+                            "outline_path='' WHERE id=?", (pid,))
+                OUTLINE_PROG["failed"] += 1
+            else:
+                con.execute("UPDATE photos SET outline_path=?, outline_h=?, "
+                            "outline_status='draft' WHERE id=?", (d, h, pid))
+                OUTLINE_PROG["ok"] += 1
+            con.commit()
+            OUTLINE_PROG["done"] += 1
+        con.close()
+        OUTLINE_PROG["msg"] = (f"done — {OUTLINE_PROG['ok']} drafted, "
+                               f"{OUTLINE_PROG['failed']} failed")
+    except Exception as e:
+        OUTLINE_PROG["msg"] = "error: " + str(e)
+    finally:
+        OUTLINE_PROG["running"] = False
+
+
+@app.post("/api/outlines/extract")
+def outlines_extract():
+    if OUTLINE_PROG["running"]:
+        return jsonify({"error": "extraction already running"}), 400
+    try:
+        import rembg  # noqa: F401
+    except ImportError:
+        return jsonify({"error":
+            "rembg is not installed — run: pip3 install rembg onnxruntime "
+            "then restart the admin app."}), 400
+    con = db.connect()
+    ids = [r["id"] for r in con.execute(
+        "SELECT id FROM photos WHERE outline_status='' "
+        "OR outline_status IS NULL ORDER BY id")]
+    con.close()
+    if not ids:
+        return jsonify({"started": False,
+                        "msg": "No new photos to trace — all done."})
+    OUTLINE_PROG.update(running=True, total=len(ids), done=0, ok=0,
+                        failed=0, msg="starting…")
+    threading.Thread(target=_outline_worker, args=(ids,), daemon=True).start()
+    return jsonify({"started": True, "total": len(ids)})
+
+
+@app.get("/api/outlines/progress")
+def outlines_progress():
+    return jsonify(OUTLINE_PROG)
+
 
 @app.get("/api/outlines")
 def outlines():

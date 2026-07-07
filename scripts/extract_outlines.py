@@ -1,17 +1,15 @@
-"""Extract gravestone silhouettes from photos using background segmentation.
+"""CLI for gravestone silhouette extraction (the admin app's Outlines tab has
+a "Trace new outlines" button that does the same thing).
 
-One-time setup (the first run also downloads a ~170MB model):
-    pip3 install rembg onnxruntime
+Setup: pip3 install rembg onnxruntime   (first run downloads a ~170MB model)
 
 Usage (from repo root):
-    python3 scripts/extract_outlines.py            # all photos without an outline
+    python3 scripts/extract_outlines.py            # all photos not yet tried
     python3 scripts/extract_outlines.py --photo 3  # one photo
     python3 scripts/extract_outlines.py --force    # redo everything
 
-For each photo it segments the foreground stone, traces the largest contour,
-simplifies it, and stores a normalized SVG path in the database with status
-'draft'. Review drafts in the admin's Outlines tab (approve/reject); only
-APPROVED outlines are published to the site.
+Outlines are saved as drafts; review in the admin Outlines tab. Only APPROVED
+outlines are published.
 """
 import argparse
 import os
@@ -20,42 +18,9 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "admin"))
 
-import db      # noqa: E402
-import images  # noqa: E402
-
-MIN_AREA_FRAC = 0.12   # reject masks smaller than this fraction of the image
-SIMPLIFY = 0.002       # contour simplification (fraction of perimeter)
-
-
-def extract(disp_path):
-    """Returns (svg_path_d, viewbox_h) or (None, reason)."""
-    import cv2
-    import numpy as np
-    from PIL import Image
-    from rembg import remove
-
-    img = Image.open(disp_path)
-    mask = remove(img, only_mask=True, session=extract.session)
-    m = np.array(mask)
-    _, m = cv2.threshold(m, 127, 255, cv2.THRESH_BINARY)
-    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
-    contours, _ = cv2.findContours(m, cv2.RETR_EXTERNAL,
-                                   cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        return None, "no foreground found"
-    c = max(contours, key=cv2.contourArea)
-    if cv2.contourArea(c) < MIN_AREA_FRAC * m.shape[0] * m.shape[1]:
-        return None, "foreground too small (stone not dominant in frame?)"
-    c = cv2.approxPolyDP(c, SIMPLIFY * cv2.arcLength(c, True), True)
-    pts = c.reshape(-1, 2).astype(float)
-    x0, y0 = pts.min(axis=0)
-    w, h = pts.max(axis=0) - (x0, y0)
-    if w < 10 or h < 10:
-        return None, "degenerate contour"
-    scale = 100.0 / w
-    pts = (pts - (x0, y0)) * scale
-    d = "M" + "L".join(f"{x:.1f},{y:.1f}" for x, y in pts) + "Z"
-    return d, round(h * scale, 1)
+import db            # noqa: E402
+import images        # noqa: E402
+import outline_core  # noqa: E402
 
 
 def main():
@@ -66,11 +31,11 @@ def main():
     args = ap.parse_args()
 
     try:
-        from rembg import new_session
+        import rembg  # noqa: F401
     except ImportError:
         sys.exit("rembg is not installed — run: pip3 install rembg onnxruntime")
     print("Loading segmentation model (first run downloads ~170MB)…")
-    extract.session = new_session("u2net")
+    outline_core.get_session()
 
     db.init()
     con = db.connect()
@@ -92,7 +57,7 @@ def main():
             print(f"  photo #{pid}: no display derivative, skipped")
             failed += 1
             continue
-        d, h = extract(disp)
+        d, h = outline_core.extract(disp)
         if d is None:
             print(f"  photo #{pid}: FAILED — {h}")
             con.execute("UPDATE photos SET outline_status='rejected', "
@@ -102,14 +67,11 @@ def main():
             con.execute(
                 "UPDATE photos SET outline_path=?, outline_h=?, "
                 "outline_status='draft' WHERE id=?", (d, h, pid))
-            print(f"  photo #{pid}: outline drafted "
-                  f"({len(d) // 8} points, aspect 100x{h})")
+            print(f"  photo #{pid}: outline drafted (aspect 100x{h})")
             ok += 1
         con.commit()
     con.close()
     print(f"\nDone: {ok} drafted, {failed} failed/skipped.")
-    if ok:
-        print("Review them in the admin app → Outlines tab, then Export + push.")
 
 
 if __name__ == "__main__":
