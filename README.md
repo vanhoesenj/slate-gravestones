@@ -63,6 +63,10 @@ On GitHub: repo → **Settings → Pages → Deploy from a branch →
 push. (Custom domain later: add it under Pages settings and site paths need
 no changes — everything is relative.)
 
+**→ [ADMIN-GUIDE.md](ADMIN-GUIDE.md) is the complete admin manual** — every
+tab and button, fix-it recipes (including replacing a bad photo), and
+troubleshooting. The short version follows.
+
 ## The workflow
 
 Start the admin whenever you're working: `python3 admin/app.py` →
