@@ -573,7 +573,18 @@ document.addEventListener("keydown", (e) => {
   if (!$("#zoomview").classList.contains("hidden")) closeZoom();
   else if (!$("#compare").classList.contains("hidden"))
     $("#compare").classList.add("hidden");
+  else if (!$("#about").classList.contains("hidden"))
+    $("#about").classList.add("hidden");
   else if (!$("#lightbox").classList.contains("hidden")) closeLightbox();
+});
+
+/* ---------- about ---------- */
+$("#aboutBtn").addEventListener("click", () =>
+  $("#about").classList.remove("hidden"));
+$("#aboutClose").addEventListener("click", () =>
+  $("#about").classList.add("hidden"));
+$("#about").addEventListener("click", (e) => {
+  if (e.target.id === "about") $("#about").classList.add("hidden");
 });
 
 /* ---------- fullscreen zoom viewer ---------- */

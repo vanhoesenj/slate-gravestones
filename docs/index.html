@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-<link rel="stylesheet" href="site.css?v=12">
+<link rel="stylesheet" href="site.css?v=13">
 </head>
 <body>
 <header>
@@ -17,11 +17,57 @@
     <p class="sub">Slate grave markers — their shapes, their carvers' iconography, and the cemeteries where they stand.</p>
   </div>
   <div id="hdrRight">
-    <div id="counts"></div>
+    <div id="countsRow">
+      <div id="counts"></div>
+      <button id="aboutBtn" title="How this library was made">?</button>
+    </div>
     <a id="contact" href="mailto:vanhoesenj@gmail.com"
        title="Email the curator">✉ contact</a>
   </div>
 </header>
+
+<div id="about" class="hidden">
+  <div id="aboutCard">
+    <button id="aboutClose">✕</button>
+    <h3>How this library was made</h3>
+
+    <h4>Photographs</h4>
+    <p>Every marker is photographed in the field; original files are archived
+      untouched. Web versions (thumbnails and display images) are generated
+      with <a href="https://python-pillow.org">Pillow</a>.</p>
+
+    <h4>The enhanced view</h4>
+    <p>The "flip" view that pulls worn carving and lettering out of the stone
+      is computed with <a href="https://opencv.org">OpenCV</a>: contrast-limited
+      adaptive histogram equalization (CLAHE) applied to the lightness channel
+      only — so the slate keeps its true color — plus a gentle unsharp mask.
+      Nothing is drawn or invented; it only redistributes the contrast already
+      present in the photograph.</p>
+
+    <h4>Outlines</h4>
+    <p>Silhouettes are traced automatically: the stone is separated from its
+      background with <a href="https://github.com/danielgatis/rembg">rembg</a>
+      (the U²-Net segmentation model), and OpenCV traces and simplifies the
+      contour into a small SVG. Every outline is reviewed by the curator
+      against its photograph before publication; imperfect traces are
+      rejected.</p>
+
+    <h4>Inscriptions &amp; translations</h4>
+    <p>Transcriptions are drafted with the help of
+      <a href="https://www.anthropic.com">Claude</a> (an AI assistant) reading
+      the enhanced photographs — many of these stones are inscribed in Welsh —
+      then verified and corrected by the curator letter-by-letter against the
+      stone. Translations from the Welsh are provided in the notes.</p>
+
+    <h4>The site</h4>
+    <p>Maps: <a href="https://maplibre.org">MapLibre GL JS</a> with
+      <a href="https://openfreemap.org">OpenFreeMap</a> tiles (©
+      OpenStreetMap contributors). Charts:
+      <a href="https://www.chartjs.org">Chart.js</a>. Type: Jost &amp; Source
+      Sans 3. Hosted on GitHub Pages with images on Cloudflare R2. A companion
+      to <a href="https://www.thestoryofslate.com">The Story of Slate</a>.</p>
+  </div>
+</div>
 
 <div id="layout">
   <aside id="filters">
@@ -113,6 +159,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="site.js?v=12"></script>
+<script src="site.js?v=13"></script>
 </body>
 </html>

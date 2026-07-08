@@ -28,7 +28,34 @@ h1 .rule { color: var(--harbour); }
   color: #cfc6e0; }
 #hdrRight { margin-left: auto; display: flex; flex-direction: column;
   align-items: flex-end; gap: 7px; }
+#countsRow { display: flex; align-items: center; gap: 9px; }
 #counts { color: #cfc6e0; font-size: 13.5px; font-family: "Jost", sans-serif; }
+#aboutBtn { width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.4); background: rgba(255,255,255,.12);
+  color: #e8e2f2; font-family: "Jost", sans-serif; font-size: 13px;
+  font-weight: 600; cursor: pointer; line-height: 1; padding: 0; }
+#aboutBtn:hover { background: rgba(255,255,255,.25); }
+
+/* about modal */
+#about { position: fixed; inset: 0; background: rgba(43,36,51,.85);
+  display: flex; align-items: center; justify-content: center; z-index: 60;
+  padding: 24px; }
+#about.hidden { display: none; }
+#aboutCard { background: var(--paper); border-radius: 10px; max-width: 620px;
+  width: 100%; max-height: 88vh; overflow: auto; position: relative;
+  padding: 24px 28px; box-shadow: 0 6px 30px rgba(0,0,0,.5); }
+#aboutCard h3 { margin: 0 0 4px; font-family: "Jost", sans-serif;
+  font-weight: 700; font-size: 21px; color: var(--slate-dark); }
+#aboutCard h4 { font-family: "Jost", sans-serif; font-size: 12px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .12em;
+  color: var(--slate-mid); margin: 18px 0 4px; }
+#aboutCard p { margin: 0; font-size: 14.5px; line-height: 1.6; }
+#aboutCard a { color: var(--slate-mid); }
+#aboutCard a:hover { color: var(--harbour); }
+#aboutClose { position: absolute; top: 12px; right: 14px; border: none;
+  background: var(--slate-mid); color: var(--paper); border-radius: 50%;
+  width: 30px; height: 30px; cursor: pointer; font-family: inherit; }
+#aboutClose:hover { background: var(--slate-dark); }
 #contact { color: #e8e2f2; background: rgba(255,255,255,.12);
   border: 1px solid rgba(255,255,255,.25); border-radius: 999px;
   padding: 4px 14px; font-size: 13px; text-decoration: none; }
