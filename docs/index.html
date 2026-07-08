@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-<link rel="stylesheet" href="site.css?v=14">
+<link rel="stylesheet" href="site.css?v=15">
 </head>
 <body>
 <header>
@@ -130,6 +130,7 @@
     <section id="gallerySec">
       <div id="galleryBar">
         <h2 id="galleryHead"></h2>
+        <div id="simBanner" class="hidden"></div>
         <div id="viewToggle">
           <button data-v="photos" class="on">Photos</button>
           <button data-v="outlines">Outlines</button>
@@ -153,6 +154,7 @@
 <div id="compare" class="hidden">
   <button id="cmpClose">✕</button>
   <div class="cmp-half" id="cmpA"></div>
+  <div id="cmpMorph" class="hidden"></div>
   <div class="cmp-half" id="cmpB"></div>
   <div id="cmpHint">click a photo to flip original / enhanced</div>
 </div>
@@ -187,6 +189,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="site.js?v=14"></script>
+<script src="site.js?v=15"></script>
 </body>
 </html>

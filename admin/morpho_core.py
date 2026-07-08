@@ -105,23 +105,19 @@ def analyze(outlines, years):
             "plus": to_display((mean + 2 * sd * Vt[i]).reshape(-1, 2)),
         })
 
-    # nearest neighbors in PC space
-    nn = {}
-    if len(ids) > 1:
-        d2 = ((scores[:, None, :] - scores[None, :, :]) ** 2).sum(axis=2)
-        np.fill_diagonal(d2, np.inf)
-        order = np.argsort(d2, axis=1)
-        for i, sid in enumerate(ids):
-            nn[str(sid)] = [int(ids[j]) for j in
-                            order[i][:min(N_NEIGHBORS, len(ids) - 1)]]
+    # per-stone: full PC scores (for client-side similarity ranking) and the
+    # resampled 64-point outline (for morphing between any two stones)
+    stones = {}
+    for i, sid in enumerate(ids):
+        stones[str(sid)] = {
+            "s": [round(float(v), 3) for v in scores[i]],
+            "p": to_display(X[i].reshape(-1, 2)),
+        }
 
     return {
         "n": len(ids),
-        "stones": {str(sid): [round(float(scores[i, 0]), 3),
-                              round(float(scores[i, 1]), 3) if k > 1 else 0]
-                   for i, sid in enumerate(ids)},
+        "stones": stones,
         "axes": axes,
         "decadeMeans": decade_means,
         "meanShape": to_display(mean.reshape(-1, 2)),
-        "neighbors": nn,
     }

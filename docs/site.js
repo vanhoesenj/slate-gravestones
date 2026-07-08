@@ -417,6 +417,23 @@ function renderDecadeChart(stones) {
   $("#" + id).addEventListener("change", () => renderTagChart(filteredStones())));
 
 /* ---------- gallery & lightbox ---------- */
+let similarityRef = null;  // stone id being used as a shape-search reference
+
+function shapeDist(a, b) {
+  const sa = MORPHO.stones[a]?.s, sb = MORPHO.stones[b]?.s;
+  if (!sa || !sb) return Infinity;
+  let d = 0;
+  for (let i = 0; i < Math.min(sa.length, sb.length); i++)
+    d += (sa[i] - sb[i]) ** 2;
+  return Math.sqrt(d);
+}
+function simNeighbors(id, k) {
+  return Object.keys(MORPHO.stones)
+    .map(Number).filter((x) => x !== id)
+    .map((x) => ({ id: x, d: shapeDist(id, x) }))
+    .sort((a, b) => a.d - b.d).slice(0, k);
+}
+
 const ptsPath = (pts) =>
   "M" + pts.map((p) => p[0] + "," + p[1]).join("L") + "Z";
 const ptsBox = (pts) => {
@@ -424,10 +441,40 @@ const ptsBox = (pts) => {
   return `0 0 100 ${Math.ceil(h)}`;
 };
 
+function renderSimBanner() {
+  const el = $("#simBanner");
+  if (similarityRef == null || !MORPHO?.stones?.[similarityRef]) {
+    el.classList.add("hidden");
+    return;
+  }
+  const ref = DB.stones.find((s) => s.id === similarityRef);
+  el.classList.remove("hidden");
+  el.innerHTML = `
+    ${ref?.outline ? `<svg viewBox="0 0 100 ${Math.ceil(ref.outline.h)}"
+      preserveAspectRatio="xMidYMax meet"><path d="${ref.outline.d}"/></svg>` : ""}
+    <span>ranked by shape similarity to
+      <strong>${esc(ref?.title || "stone #" + similarityRef)}</strong>
+      (Δ = shape distance)</span>
+    <button id="simClear" title="Clear shape search">✕</button>`;
+  $("#simClear").addEventListener("click", () => {
+    similarityRef = null;
+    renderGallery(filteredStones());
+  });
+}
+
 function renderGallery(stones) {
+  renderSimBanner();
   if (galleryView === "morpho") return renderMorpho(stones);
+  const sim = similarityRef != null && MORPHO?.stones?.[similarityRef];
+  if (sim) {
+    stones = stones.filter((s) => MORPHO.stones[s.id])
+      .sort((a, b) => shapeDist(similarityRef, a.id) -
+                      shapeDist(similarityRef, b.id));
+  }
   const withOutline = stones.filter((s) => s.outline).length;
-  $("#galleryHead").textContent = galleryView === "outlines"
+  $("#galleryHead").textContent = sim
+    ? `${stones.length} analyzed silhouettes, most similar first`
+    : galleryView === "outlines"
     ? `${withOutline} of ${stones.length} gravestones have outlines`
     : `${stones.length} gravestone${stones.length === 1 ? "" : "s"}`;
   const shown = stones.slice(0, galleryShown);
@@ -443,9 +490,12 @@ function renderGallery(stones) {
           : `<div class="noOutline">no outline yet</div>`}
         ${cap}</div>`;
     }
+    const badge = sim && s.id !== similarityRef
+      ? `<span class="simBadge">Δ ${shapeDist(similarityRef, s.id).toFixed(2)}</span>`
+      : sim ? `<span class="simBadge ref">reference</span>` : "";
     return `<div class="stone" data-id="${s.id}">
       <img loading="lazy" src="${imgUrl(s.photos[0].id, "thumb")}" alt="">
-      ${cap}
+      ${badge}${cap}
     </div>`;
   }).join("") +
   (stones.length > galleryShown
@@ -516,19 +566,30 @@ function openLightbox(id) {
       <button id="cmpBtn"></button>
       <button id="linkBtn" title="Copy a direct link to this gravestone">🔗 copy link</button>
     </div>
-    ${MORPHO?.neighbors?.[id] ? `<div class="lbsim"><h5>Similar shapes</h5>
-      ${MORPHO.neighbors[id]
-        .map((nid) => DB.stones.find((x) => x.id === nid))
-        .filter(Boolean).slice(0, 4).map((n) => `
+    ${MORPHO?.stones?.[id] ? `<div class="lbsim"><h5>Similar shapes</h5>
+      ${simNeighbors(id, 4)
+        .map((r) => DB.stones.find((x) => x.id === r.id))
+        .filter(Boolean).map((n) => `
         <button class="simBtn" data-id="${n.id}" title="${esc(n.title || "")}">
           ${n.outline ? `<svg viewBox="${`0 0 100 ${Math.ceil(n.outline.h)}`}"
             preserveAspectRatio="xMidYMax meet"><path d="${n.outline.d}"/></svg>` : ""}
           <span>${esc((n.title || "Unnamed").slice(0, 22))}</span>
-        </button>`).join("")}</div>` : ""}
+        </button>`).join("")}
+      <button class="simAll" data-id="${id}">◇ rank the whole collection by
+        this shape</button></div>` : ""}
     <div class="lbhint">◐ Click a photo to flip between the original and an
       enhanced view that brings out carving and inscriptions.</div>`;
   $("#lbInfo").querySelectorAll(".simBtn").forEach((b) =>
     b.addEventListener("click", () => openLightbox(+b.dataset.id)));
+  $("#lbInfo").querySelectorAll(".simAll").forEach((b) =>
+    b.addEventListener("click", () => {
+      similarityRef = +b.dataset.id;
+      closeLightbox();
+      galleryView = "photos";
+      document.querySelectorAll("#viewToggle button").forEach((x) =>
+        x.classList.toggle("on", x.dataset.v === "photos"));
+      renderGallery(filteredStones());
+    }));
   $("#lbText").innerHTML =
     (s.trans ? `<h4>Inscription</h4><div class="lbtrans">${esc(s.trans)}</div>` : "") +
     (s.notes ? `<h4>Notes / translation</h4><div class="lbnotes">${esc(s.notes)}</div>` : "");
@@ -583,12 +644,38 @@ function cmpHalf(el, s) {
     pre.src = imgUrl(+im.dataset.id, v);
   });
 }
+let cmpMorphTimer = null;
 function openCompare(idA, idB) {
   const a = DB.stones.find((x) => x.id === idA);
   const b = DB.stones.find((x) => x.id === idB);
   if (!a || !b) return;
   cmpHalf($("#cmpA"), a);
   cmpHalf($("#cmpB"), b);
+  // morphing transition between the two silhouettes, when both are analyzed
+  cancelAnimationFrame(cmpMorphTimer);
+  const pa = MORPHO?.stones?.[idA]?.p, pb = MORPHO?.stones?.[idB]?.p;
+  const mid = $("#cmpMorph");
+  if (pa && pb) {
+    const hMax = Math.ceil(Math.max(...pa.map((p) => p[1]),
+                                    ...pb.map((p) => p[1])));
+    mid.classList.remove("hidden");
+    mid.innerHTML = `<svg viewBox="0 0 100 ${hMax}"
+      preserveAspectRatio="xMidYMax meet"><path/></svg>
+      <span>shape morph · Δ ${shapeDist(idA, idB).toFixed(2)}</span>`;
+    const path = mid.querySelector("path");
+    const t0 = performance.now();
+    const tick = (now) => {
+      // ping-pong 0→1→0 every 3 seconds
+      const t = 0.5 - 0.5 * Math.cos(((now - t0) / 3000) * Math.PI * 2);
+      path.setAttribute("d", ptsPath(pa.map((p, i) =>
+        [p[0] + (pb[i][0] - p[0]) * t, p[1] + (pb[i][1] - p[1]) * t])));
+      if (!$("#compare").classList.contains("hidden"))
+        cmpMorphTimer = requestAnimationFrame(tick);
+    };
+    cmpMorphTimer = requestAnimationFrame(tick);
+  } else {
+    mid.classList.add("hidden");
+  }
   $("#lightbox").classList.add("hidden");
   $("#compare").classList.remove("hidden");
 }
@@ -878,8 +965,9 @@ function renderMorpho(stones) {
   const byDec = {};
   pts.forEach((s) => {
     const d = s.year ? Math.floor(s.year / 10) * 10 + "s" : "undated";
+    const sc = MORPHO.stones[s.id].s;
     (byDec[d] = byDec[d] || []).push(
-      { x: MORPHO.stones[s.id][0], y: MORPHO.stones[s.id][1], sid: s.id,
+      { x: sc[0], y: sc[1] ?? 0, sid: s.id,
         title: (s.title || "Unnamed") + yearsOf(s) });
   });
   const keys = Object.keys(byDec).sort();

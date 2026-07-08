@@ -252,6 +252,35 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
 .simBtn span { font-size: 11px; color: var(--ordovician); max-width: 90px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* shape-similarity search */
+#simBanner { display: flex; align-items: center; gap: 10px;
+  background: #fff; border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 8px 5px 14px; font-size: 13px; color: var(--ordovician); }
+#simBanner svg { width: 20px; height: 30px; }
+#simBanner svg path { fill: var(--slate-mid); }
+#simBanner strong { color: var(--slate-dark); }
+#simBanner button { border: none; background: var(--slate-mid);
+  color: var(--paper); border-radius: 50%; width: 22px; height: 22px;
+  cursor: pointer; font-size: 11px; }
+#simBanner button:hover { background: var(--slate-dark); }
+.simBadge { position: absolute; top: 8px; left: 8px;
+  background: rgba(43,36,51,.78); color: var(--paper); font-size: 11.5px;
+  font-family: "Jost", sans-serif; border-radius: 999px; padding: 2px 9px; }
+.simBadge.ref { background: var(--harbour); }
+.stone { position: relative; }
+.simAll { display: block; margin-top: 4px; border: 1px dashed var(--slate-mid);
+  background: transparent; color: var(--slate-mid); border-radius: 999px;
+  padding: 4px 12px; cursor: pointer; font: inherit; font-size: 12.5px; }
+.simAll:hover { background: var(--slate-mid); color: var(--paper); }
+
+/* morph column in compare view */
+#cmpMorph { flex: 0 0 130px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px; }
+#cmpMorph svg { width: 110px; height: 200px; }
+#cmpMorph svg path { fill: var(--harbour); opacity: .9; }
+#cmpMorph span { color: #cfc6e0; font-size: 12px;
+  font-family: "Jost", sans-serif; text-align: center; }
+
 .hidden { display: none !important; }
 
 /* fullscreen zoom viewer */
