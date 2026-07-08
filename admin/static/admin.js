@@ -253,12 +253,24 @@ async function openStone(id) {
        <div class="tools">
          <button data-act="primary" data-id="${p.id}" title="Set as primary">★</button>
          <button data-act="enh" data-id="${p.id}" title="View enhanced (carving/inscription)">◐</button>
+         <button data-act="move" data-id="${p.id}" title="Move photo to another gravestone (by #)">⇄</button>
          <button data-act="del" data-id="${p.id}" title="Remove photo">✕</button>
        </div></div>`).join("");
   $("#sdPhotos").querySelectorAll("button").forEach((b) =>
     b.addEventListener("click", async () => {
       if (b.dataset.act === "enh") {
         window.open(`/media/${b.dataset.id}/enh.jpg`, "_blank");
+        return;
+      }
+      if (b.dataset.act === "move") {
+        const target = parseInt(prompt(
+          "Move this photo to which gravestone # ? (see #s in the grid)"));
+        if (!target || target === curStone) return;
+        try {
+          await api(`/api/photos/${b.dataset.id}/move`, { method: "PUT",
+            body: { stone_id: target } });
+        } catch (err) { alert(err.message); return; }
+        openStone(curStone); loadStones();
         return;
       }
       if (b.dataset.act === "primary")
