@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS letters (
     stone_id INTEGER NOT NULL,
     ch TEXT NOT NULL,                 -- the recognized character
     conf REAL,
-    status TEXT DEFAULT 'ok'          -- 'ok' | 'bad' (curator-rejected)
+    status TEXT DEFAULT 'ok',         -- 'ok' | 'bad' (curator-rejected)
+    reviewed INTEGER DEFAULT 0        -- curator has looked at this one
 );
 
 CREATE TABLE IF NOT EXISTS photo_emb (
@@ -152,6 +153,10 @@ def init():
         con.commit()
     if "letters_scanned" not in pcols:
         con.execute("ALTER TABLE photos ADD COLUMN letters_scanned INTEGER DEFAULT 0")
+        con.commit()
+    lcols = [r["name"] for r in con.execute("PRAGMA table_info(letters)")]
+    if lcols and "reviewed" not in lcols:
+        con.execute("ALTER TABLE letters ADD COLUMN reviewed INTEGER DEFAULT 0")
         con.commit()
     # backfill persons from legacy single-name stones (runs once)
     if (con.execute("SELECT COUNT(*) FROM persons").fetchone()[0] == 0 and

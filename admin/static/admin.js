@@ -437,10 +437,22 @@ async function loadOutlines() {
       <div class="btnrow olbtns">
         <button data-id="${p.id}" data-s="approved" ${p.status === "approved" ? "disabled" : ""}>✓ approve</button>
         <button data-id="${p.id}" data-s="rejected" ${p.status === "rejected" ? "disabled" : ""}>✕ reject</button>
+        <button data-id="${p.id}" data-s="retrace" title="Re-trace this photo (a few seconds)">↻</button>
       </div>
     </div>`).join("") || "<p class='hint'>Nothing here.</p>";
   $("#olGrid").querySelectorAll(".olbtns button").forEach((b) =>
     b.addEventListener("click", async () => {
+      if (b.dataset.s === "retrace") {
+        b.disabled = true;
+        b.textContent = "…";
+        try {
+          const r = await api(`/api/photos/${b.dataset.id}/retrace`,
+            { method: "POST", body: {} });
+          if (!r.ok) alert("Trace failed: " + r.reason);
+        } catch (err) { alert(err.message); }
+        loadOutlines();
+        return;
+      }
       await api(`/api/photos/${b.dataset.id}/outline`, { method: "PUT",
         body: { status: b.dataset.s } });
       loadOutlines();
@@ -510,7 +522,8 @@ bindJob("#ltBuild", "#ltProg", "/api/letters/build", "/api/letters/progress",
 
 async function loadLetters() {
   const ch = $("#ltCh").value;
-  const r = await api("/api/letters?ch=" + encodeURIComponent(ch));
+  const r = await api("/api/letters?ch=" + encodeURIComponent(ch) +
+    ($("#ltNew").checked ? "&unreviewed=1" : ""));
   const opts = Object.keys(r.counts).sort()
     .map((c) => `<option value="${c}" ${c === ch ? "selected" : ""}>
       ${c} (${r.counts[c]})</option>`).join("");
@@ -541,6 +554,15 @@ async function loadLetters() {
     }));
 }
 $("#ltCh").addEventListener("change", loadLetters);
+$("#ltNew").addEventListener("change", loadLetters);
+$("#ltMarkRev").addEventListener("click", async () => {
+  const ch = $("#ltCh").value;
+  if (!ch) return;
+  const r = await api("/api/letters/mark_reviewed", { method: "POST",
+    body: { ch } });
+  $("#ltCount").textContent = `${r.marked} marked reviewed`;
+  loadLetters();
+});
 
 $("#dpBuild").addEventListener("click", async () => {
   $("#dpBuild").disabled = true;

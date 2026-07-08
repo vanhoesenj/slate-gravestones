@@ -416,6 +416,7 @@ OUTLINE_PROG = {"running": False, "total": 0, "done": 0, "ok": 0,
 
 def _outline_worker(ids):
     import outline_core
+    errs = []
     try:
         OUTLINE_PROG["msg"] = "loading model (first run downloads ~170MB)…"
         outline_core.get_session()
@@ -429,6 +430,7 @@ def _outline_worker(ids):
                 con.execute("UPDATE photos SET outline_status='rejected', "
                             "outline_path='' WHERE id=?", (pid,))
                 OUTLINE_PROG["failed"] += 1
+                errs.append(f"photo #{pid}: {h}")
             else:
                 con.execute("UPDATE photos SET outline_path=?, outline_h=?, "
                             "outline_status='draft' WHERE id=?", (d, h, pid))
@@ -437,7 +439,8 @@ def _outline_worker(ids):
             OUTLINE_PROG["done"] += 1
         con.close()
         OUTLINE_PROG["msg"] = (f"done — {OUTLINE_PROG['ok']} drafted, "
-                               f"{OUTLINE_PROG['failed']} failed")
+                               f"{OUTLINE_PROG['failed']} failed"
+                               + (f" ({'; '.join(errs[:3])})" if errs else ""))
     except Exception as e:
         OUTLINE_PROG["msg"] = "error: " + str(e)
     finally:
@@ -471,6 +474,32 @@ def outlines_extract():
 @app.get("/api/outlines/progress")
 def outlines_progress():
     return jsonify(OUTLINE_PROG)
+
+
+@app.post("/api/photos/<int:pid>/retrace")
+def retrace_outline(pid):
+    """Synchronous single-photo re-trace (used by the ↻ button)."""
+    try:
+        import rembg  # noqa: F401
+    except ImportError:
+        return jsonify({"error": "rembg not installed"}), 400
+    import outline_core
+    _t, disp, _e = images.derivative_paths(pid)
+    if not os.path.exists(disp):
+        return jsonify({"error": "no display image for this photo"}), 400
+    d, h = outline_core.extract(disp)
+    con = db.connect()
+    if d is None:
+        con.execute("UPDATE photos SET outline_status='rejected', "
+                    "outline_path='' WHERE id=?", (pid,))
+        con.commit()
+        con.close()
+        return jsonify({"ok": False, "reason": h})
+    con.execute("UPDATE photos SET outline_path=?, outline_h=?, "
+                "outline_status='draft' WHERE id=?", (d, h, pid))
+    con.commit()
+    con.close()
+    return jsonify({"ok": True})
 
 
 @app.get("/api/outlines")
@@ -787,13 +816,16 @@ def letters_progress():
 @app.get("/api/letters")
 def letters_list():
     ch = request.args.get("ch", "")
+    unrev = " AND reviewed=0" if request.args.get("unreviewed") == "1" else ""
     con = db.connect()
     counts = {r["ch"]: r["n"] for r in con.execute(
-        "SELECT ch, COUNT(*) n FROM letters WHERE status='ok' GROUP BY ch")}
+        f"SELECT ch, COUNT(*) n FROM letters WHERE status='ok'{unrev} "
+        "GROUP BY ch")}
     rows = [dict(r) for r in con.execute(
-        "SELECT l.id, l.ch, l.stone_id, l.conf, s.title FROM letters l "
-        "JOIN stones s ON s.id=l.stone_id "
-        "WHERE l.status='ok' AND l.ch=? ORDER BY l.id", (ch,))] if ch else []
+        "SELECT l.id, l.ch, l.stone_id, l.conf, l.reviewed, s.title "
+        "FROM letters l JOIN stones s ON s.id=l.stone_id "
+        f"WHERE l.status='ok'{unrev} AND l.ch=? ORDER BY l.id",
+        (ch,))] if ch else []
     con.close()
     return jsonify({"counts": counts, "letters": rows})
 
@@ -803,14 +835,26 @@ def letters_update(lid):
     d = request.json
     con = db.connect()
     if d.get("status") in ("ok", "bad"):
-        con.execute("UPDATE letters SET status=? WHERE id=?",
+        con.execute("UPDATE letters SET status=?, reviewed=1 WHERE id=?",
                     (d["status"], lid))
     if d.get("ch"):
-        con.execute("UPDATE letters SET ch=? WHERE id=?",
+        con.execute("UPDATE letters SET ch=?, reviewed=1 WHERE id=?",
                     (d["ch"].strip().upper()[:1], lid))
     con.commit()
     con.close()
     return jsonify({"ok": True})
+
+
+@app.post("/api/letters/mark_reviewed")
+def letters_mark_reviewed():
+    ch = request.json.get("ch", "")
+    con = db.connect()
+    cur = con.execute(
+        "UPDATE letters SET reviewed=1 WHERE status='ok' AND ch=?", (ch,))
+    con.commit()
+    n = cur.rowcount
+    con.close()
+    return jsonify({"marked": n})
 
 
 @app.get("/media_letters/<int:lid>.jpg")
