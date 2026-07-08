@@ -1082,13 +1082,15 @@ function update() {
 
 /* ---------- init ---------- */
 (async function init() {
+  // no-cache: always revalidate the data files so a fresh publish shows up
+  // immediately (the server replies 304 when nothing changed)
   try {
-    const rm = await fetch("data/morpho.json");
+    const rm = await fetch("data/morpho.json", { cache: "no-cache" });
     if (rm.ok) MORPHO = await rm.json();
   } catch (e) { /* shape space hidden if absent */ }
   if (MORPHO) $("#morphoTab").classList.remove("hidden");
   try {
-    const rc = await fetch("data/constellation.json");
+    const rc = await fetch("data/constellation.json", { cache: "no-cache" });
     if (rc.ok) CONSTEL = await rc.json();
   } catch (e) { /* constellation hidden if absent */ }
   if (CONSTEL) $("#constelTab").classList.remove("hidden");
@@ -1097,7 +1099,7 @@ function update() {
   Chart.defaults.plugins.title.color = "#4a3f63";
   Chart.defaults.plugins.title.font = { family: '"Jost", sans-serif',
     size: 14, weight: 600 };
-  const r = await fetch("data/library.json");
+  const r = await fetch("data/library.json", { cache: "no-cache" });
   DB = await r.json();
   IMG = DB.imageBase || "";
   DB.cemeteries.forEach((c) => cemById[c.id] = c);
