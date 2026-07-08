@@ -12,18 +12,17 @@ from PIL import Image, ImageOps
 LETTER_DIR = os.path.join(os.path.dirname(__file__), "media", "letters")
 KEEP = re.compile(r"[A-Za-z0-9&]")
 MIN_PX = 18        # minimum box side in pixels
-MIN_WORD_CONF = 50
+MIN_WORD_CONF = 38   # permissive — the curator review step catches junk
 PAD = 0.18         # crop padding as fraction of box size
 CROP_EDGE = 96     # saved crop long edge
 
 
-def extract_letters(enh_path):
-    """Returns list of (ch, box) with boxes in top-left-origin pixel coords."""
+def _pass(img, cfg):
+    """One tesseract pass → list of (ch, box, conf)."""
     import pytesseract
-    img = Image.open(enh_path).convert("L")
     W, H = img.size
-    # word-level confidence gates the character boxes
-    data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+    data = pytesseract.image_to_data(img, config=cfg,
+                                     output_type=pytesseract.Output.DICT)
     words = []
     for i in range(len(data["text"])):
         try:
@@ -35,7 +34,7 @@ def extract_letters(enh_path):
                           data["left"][i] + data["width"][i],
                           data["top"][i] + data["height"][i], conf))
     out = []
-    for line in pytesseract.image_to_boxes(img).splitlines():
+    for line in pytesseract.image_to_boxes(img, config=cfg).splitlines():
         parts = line.split()
         if len(parts) < 5 or not KEEP.fullmatch(parts[0]):
             continue
@@ -50,7 +49,23 @@ def extract_letters(enh_path):
         if conf is None:
             continue
         out.append((ch, (x0, y0, x1, y1), conf))
-    return out, img
+    return out
+
+
+def extract_letters(enh_path):
+    """Two detection passes (block + sparse text), merged with dedupe.
+    Returns (list of (ch, box, conf), image)."""
+    img = Image.open(enh_path).convert("L")
+    found = _pass(img, "")                      # default: block text
+    seen = [(b, c) for c, b, _ in found]
+    for ch, box, conf in _pass(img, "--psm 11"):  # sparse text pass
+        cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+        dup = any(b[0] <= cx <= b[2] and b[1] <= cy <= b[3]
+                  for b, _c in seen)
+        if not dup:
+            found.append((ch, box, conf))
+            seen.append((box, ch))
+    return found, img
 
 
 def save_crop(img, box, letter_id):
