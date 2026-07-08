@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS stones (
     year INTEGER,                     -- death year (principal date; drives charts)
     birth_year INTEGER,
     transcription TEXT DEFAULT '',    -- inscription as carved, line breaks kept
+    has_audio INTEGER DEFAULT 0,      -- Welsh TTS audio built & uploaded
     date_text TEXT DEFAULT '',        -- full date as inscribed, free text
     notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
@@ -69,6 +70,11 @@ CREATE TABLE IF NOT EXISTS tags (
     category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     UNIQUE(category_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS photo_emb (
+    photo_id INTEGER PRIMARY KEY REFERENCES photos(id) ON DELETE CASCADE,
+    vec TEXT NOT NULL                 -- JSON list, unit-norm CLIP embedding
 );
 
 CREATE TABLE IF NOT EXISTS stone_tags (
@@ -122,6 +128,9 @@ def init():
         con.commit()
     if "transcription" not in cols:
         con.execute("ALTER TABLE stones ADD COLUMN transcription TEXT DEFAULT ''")
+        con.commit()
+    if "has_audio" not in cols:
+        con.execute("ALTER TABLE stones ADD COLUMN has_audio INTEGER DEFAULT 0")
         con.commit()
     pcols = [r["name"] for r in con.execute("PRAGMA table_info(photos)")]
     if "outline_path" not in pcols:

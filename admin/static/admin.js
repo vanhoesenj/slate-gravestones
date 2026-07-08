@@ -462,6 +462,35 @@ async function pollOutlineProgress() {
   }
 }
 
+// generic background-job button: start endpoint + progress poller
+function bindJob(btnId, progId, startUrl, progUrl) {
+  const btn = $(btnId), out = $(progId);
+  const poll = async () => {
+    const p = await api(progUrl);
+    out.textContent = p.running ? `${p.done}/${p.total} — ${p.msg}` : p.msg;
+    if (p.running) setTimeout(poll, 2000);
+    else btn.disabled = false;
+  };
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    try {
+      const r = await api(startUrl, { method: "POST", body: {} });
+      if (!r.started) {
+        out.textContent = r.msg;
+        btn.disabled = false;
+        return;
+      }
+      poll();
+    } catch (err) {
+      out.textContent = err.message;
+      btn.disabled = false;
+    }
+  });
+}
+bindJob("#auBuild", "#auProg", "/api/audio/build", "/api/audio/progress");
+bindJob("#ceBuild", "#ceProg", "/api/constellation/build",
+        "/api/constellation/progress");
+
 $("#dpBuild").addEventListener("click", async () => {
   $("#dpBuild").disabled = true;
   try {

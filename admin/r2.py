@@ -57,5 +57,12 @@ def upload_photo(photo_id, thumb_path, disp_path, enh_path=None,
                                   "CacheControl": "public, max-age=31536000"})
 
 
+def upload_object(key, path, content_type):
+    s3, bucket = client()
+    s3.upload_file(path, bucket, key,
+                   ExtraArgs={"ContentType": content_type,
+                              "CacheControl": "public, max-age=31536000"})
+
+
 def public_base():
     return load_config().get("r2", {}).get("public_base_url", "").rstrip("/")

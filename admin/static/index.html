@@ -15,7 +15,7 @@
     <button data-tab="import">Import</button>
     <button data-tab="stones">Gravestones</button>
     <button data-tab="tags">Tags</button>
-    <button data-tab="outlines">Outlines</button>
+    <button data-tab="outlines">Analysis</button>
     <button data-tab="publish">Publish</button>
   </nav>
   <div id="summary"></div>
@@ -161,6 +161,26 @@
     <div class="btnrow">
       <button id="dpBuild" class="primary">Build new relief maps</button>
       <span id="dpProg"></span>
+    </div>
+
+    <h2 style="margin-top:26px">Welsh audio</h2>
+    <p class="hint">Reads each Welsh inscription aloud with the Piper
+      open-source Welsh voice and uploads the recording to R2 (needs
+      <code>pip3 install piper-tts</code> once). The site shows a 🔊 button
+      on those inscriptions after the next Export + push.</p>
+    <div class="btnrow">
+      <button id="auBuild" class="primary">Record new Welsh inscriptions</button>
+      <span id="auProg"></span>
+    </div>
+
+    <h2 style="margin-top:26px">Visual constellation</h2>
+    <p class="hint">Computes a visual-similarity embedding per photo (CLIP —
+      same <code>torch transformers</code> install as relief maps). The
+      constellation itself is generated automatically at Export, arranging
+      stones so similar carving sits together.</p>
+    <div class="btnrow">
+      <button id="ceBuild" class="primary">Embed new photos</button>
+      <span id="ceProg"></span>
     </div>
   </section>
 

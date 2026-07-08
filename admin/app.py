@@ -563,6 +563,142 @@ def depth_progress():
     return jsonify(DEPTH_PROG)
 
 
+# ---------- Welsh audio (Piper TTS) ----------
+
+AUDIO_PROG = {"running": False, "total": 0, "done": 0, "ok": 0,
+              "failed": 0, "msg": ""}
+AUDIO_DIR = os.path.join(os.path.dirname(__file__), "media", "audio")
+
+
+def _audio_worker(rows):
+    import audio_core
+    try:
+        AUDIO_PROG["msg"] = "loading Welsh voice (first run downloads ~65MB)…"
+        audio_core.get_voice()
+        con = db.connect()
+        for sid, text in rows:
+            AUDIO_PROG["msg"] = f"reading gravestone #{sid} aloud…"
+            wav = os.path.join(AUDIO_DIR, f"{sid}.wav")
+            try:
+                audio_core.synth(text, wav)
+                r2.upload_object(f"audio/{sid}.wav", wav, "audio/wav")
+                con.execute("UPDATE stones SET has_audio=1 WHERE id=?", (sid,))
+                AUDIO_PROG["ok"] += 1
+            except Exception as e:
+                AUDIO_PROG["failed"] += 1
+                AUDIO_PROG["msg"] = f"stone #{sid} failed: {e}"
+            con.commit()
+            AUDIO_PROG["done"] += 1
+        con.close()
+        AUDIO_PROG["msg"] = (f"done — {AUDIO_PROG['ok']} recordings built and "
+                             f"uploaded, {AUDIO_PROG['failed']} failed. "
+                             "Export + push to publish.")
+    except Exception as e:
+        AUDIO_PROG["msg"] = "error: " + str(e)
+    finally:
+        AUDIO_PROG["running"] = False
+
+
+@app.post("/api/audio/build")
+def audio_build():
+    if AUDIO_PROG["running"]:
+        return jsonify({"error": "already running"}), 400
+    try:
+        import piper  # noqa: F401
+    except ImportError:
+        return jsonify({"error": "Piper is not installed — run: "
+                        "pip3 install piper-tts then restart the admin app."}), 400
+    if not r2.r2_configured():
+        return jsonify({"error": "R2 must be configured (audio uploads "
+                        "directly to the bucket)."}), 400
+    import audio_core
+    con = db.connect()
+    rows = [(r["id"], r["transcription"]) for r in con.execute(
+        "SELECT id, transcription FROM stones "
+        "WHERE has_audio=0 AND transcription != ''")
+        if audio_core.is_welsh(r["transcription"])]
+    con.close()
+    if not rows:
+        return jsonify({"started": False,
+                        "msg": "No new Welsh inscriptions to record."})
+    AUDIO_PROG.update(running=True, total=len(rows), done=0, ok=0,
+                      failed=0, msg="starting…")
+    threading.Thread(target=_audio_worker, args=(rows,), daemon=True).start()
+    return jsonify({"started": True, "total": len(rows)})
+
+
+@app.get("/api/audio/progress")
+def audio_progress():
+    return jsonify(AUDIO_PROG)
+
+
+# ---------- visual constellation (CLIP embeddings) ----------
+
+EMB_PROG = {"running": False, "total": 0, "done": 0, "ok": 0,
+            "failed": 0, "msg": ""}
+
+
+def _emb_worker(ids):
+    import clip_core
+    try:
+        EMB_PROG["msg"] = "loading CLIP model (first run downloads ~600MB)…"
+        clip_core.get_model()
+        con = db.connect()
+        for pid in ids:
+            EMB_PROG["msg"] = f"embedding photo #{pid}…"
+            thumb, _disp, _enh = images.derivative_paths(pid)
+            try:
+                vec = clip_core.embed(thumb)
+                con.execute("INSERT OR REPLACE INTO photo_emb(photo_id, vec) "
+                            "VALUES(?,?)", (pid, json.dumps(vec)))
+                EMB_PROG["ok"] += 1
+            except Exception as e:
+                EMB_PROG["failed"] += 1
+                EMB_PROG["msg"] = f"photo #{pid} failed: {e}"
+            con.commit()
+            EMB_PROG["done"] += 1
+        con.close()
+        EMB_PROG["msg"] = (f"done — {EMB_PROG['ok']} embedded, "
+                           f"{EMB_PROG['failed']} failed. Export + push to "
+                           "publish the constellation.")
+    except Exception as e:
+        EMB_PROG["msg"] = "error: " + str(e)
+    finally:
+        EMB_PROG["running"] = False
+
+
+@app.post("/api/constellation/build")
+def emb_build():
+    if EMB_PROG["running"]:
+        return jsonify({"error": "already running"}), 400
+    try:
+        import torch  # noqa: F401
+        import transformers  # noqa: F401
+    except ImportError:
+        return jsonify({"error": "Not installed — run: pip3 install torch "
+                        "transformers then restart the admin app."}), 400
+    con = db.connect()
+    ids = []
+    for r in con.execute(
+            "SELECT id FROM photos WHERE id NOT IN "
+            "(SELECT photo_id FROM photo_emb) ORDER BY id"):
+        thumb = images.derivative_paths(r["id"])[0]
+        if os.path.exists(thumb):
+            ids.append(r["id"])
+    con.close()
+    if not ids:
+        return jsonify({"started": False, "msg": "All photos embedded."})
+    EMB_PROG.update(running=True, total=len(ids), done=0, ok=0,
+                    failed=0, msg="starting…")
+    threading.Thread(target=_emb_worker, args=(ids,), daemon=True).start()
+    return jsonify({"started": True, "total": len(ids)})
+
+
+@app.get("/api/constellation/progress")
+def emb_progress():
+    return jsonify(EMB_PROG)
+
+
 # ---------- transcription drafts ----------
 # A drafts file (data/transcription_drafts.json) is a list of
 # {"stone_id": 3, "transcription": "ER COF\nam\n…", "translation": "In memory…"}.

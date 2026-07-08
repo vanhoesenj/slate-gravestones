@@ -28,7 +28,8 @@ def export():
     }
     stones = con.execute(
         "SELECT id, cemetery_id AS cem, title, year, birth_year AS birth, "
-        "notes, transcription AS trans FROM stones ORDER BY id").fetchall()
+        "notes, transcription AS trans, has_audio "
+        "FROM stones ORDER BY id").fetchall()
     persons_by_stone = {}
     for r in con.execute(
             "SELECT stone_id, name, birth_year AS birth, death_year AS death "
@@ -56,6 +57,8 @@ def export():
                                     {"d": r["d"], "h": r["h"]})
     for s in stones:
         rec = dict(s)
+        if rec.pop("has_audio", 0):
+            rec["audio"] = 1
         rec["persons"] = persons_by_stone.get(s["id"], [])
         rec["tags"] = tags_by_stone.get(s["id"], [])
         if s["id"] in outline_by_stone:
@@ -63,6 +66,14 @@ def export():
         rec["photos"] = photos_by_stone.get(s["id"], [])
         if rec["photos"]:  # only publish stones that have at least one photo
             data["stones"].append(rec)
+    # visual-similarity embeddings (primary photo per stone), for the
+    # constellation view
+    emb_by_stone = {}
+    for r in con.execute(
+            "SELECT p.stone_id, e.vec FROM photo_emb e "
+            "JOIN photos p ON p.id=e.photo_id "
+            "ORDER BY p.stone_id, p.is_primary DESC, p.id"):
+        emb_by_stone.setdefault(r["stone_id"], r["vec"])
     con.close()
 
     os.makedirs(os.path.dirname(os.path.abspath(OUT_PATH)), exist_ok=True)
@@ -88,9 +99,35 @@ def export():
     except Exception as e:
         print(f"morphometrics skipped: {e}")
 
+    # constellation: 2D projection of CLIP embeddings, one point per stone
+    constel_path = os.path.join(os.path.dirname(os.path.abspath(OUT_PATH)),
+                                "constellation.json")
+    constel_n = 0
+    try:
+        if len(emb_by_stone) >= 3:
+            import numpy as np
+            sids = list(emb_by_stone)
+            X = np.array([json.loads(emb_by_stone[s]) for s in sids])
+            Xc = X - X.mean(axis=0)
+            _u, _s, Vt = np.linalg.svd(Xc, full_matrices=False)
+            xy = Xc @ Vt[:2].T
+            lo, hi = xy.min(axis=0), xy.max(axis=0)
+            xy = 0.06 + 0.88 * (xy - lo) / np.maximum(hi - lo, 1e-9)
+            with open(constel_path, "w") as f:
+                json.dump({"n": len(sids), "stones": {
+                    str(s): [round(float(xy[i, 0]), 3),
+                             round(float(xy[i, 1]), 3)]
+                    for i, s in enumerate(sids)}}, f, separators=(",", ":"))
+            constel_n = len(sids)
+        elif os.path.exists(constel_path):
+            os.remove(constel_path)
+    except Exception as e:
+        print(f"constellation skipped: {e}")
+
     return {"stones": len(data["stones"]),
             "cemeteries": len(data["cemeteries"]),
             "shapes_analyzed": morpho_n,
+            "constellation": constel_n,
             "path": os.path.abspath(OUT_PATH)}
 
 

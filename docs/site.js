@@ -3,7 +3,8 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-let DB, MORPHO = null, IMG = "", map, tagChart, decadeChart, pcChart;
+let DB, MORPHO = null, CONSTEL = null, IMG = "", map, tagChart, decadeChart,
+    pcChart;
 const cemById = {}, tagById = {}, catById = {};
 const F = { country: "", state: "", cemetery: "", yearMin: null, yearMax: null,
             tags: new Set(), q: "" };
@@ -462,9 +463,28 @@ function renderSimBanner() {
   });
 }
 
+function renderConstel(stones) {
+  const pts = stones.filter((s) => CONSTEL.stones[s.id]);
+  $("#galleryHead").textContent =
+    `Constellation — ${pts.length} stones arranged by visual similarity`;
+  $("#gallery").innerHTML = `<div id="constelWrap">` +
+    pts.map((s) => {
+      const [x, y] = CONSTEL.stones[s.id];
+      return `<div class="cnode" data-id="${s.id}"
+        style="left:${(x * 100).toFixed(1)}%; top:${(y * 100).toFixed(1)}%"
+        title="${esc(s.title || "")}${yearsOf(s)}">
+        <img loading="lazy" src="${imgUrl(s.photos[0].id, "thumb")}" alt=""></div>`;
+    }).join("") +
+    `<p class="cHint">photos arranged so visually similar carving sits
+      together — click a stone to open it</p></div>`;
+  $("#gallery").querySelectorAll(".cnode").forEach((el) =>
+    el.addEventListener("click", () => openLightbox(+el.dataset.id)));
+}
+
 function renderGallery(stones) {
   renderSimBanner();
   if (galleryView === "morpho") return renderMorpho(stones);
+  if (galleryView === "constel") return renderConstel(stones);
   const sim = similarityRef != null && MORPHO?.stones?.[similarityRef];
   if (sim) {
     stones = stones.filter((s) => MORPHO.stones[s.id])
@@ -591,8 +611,24 @@ function openLightbox(id) {
       renderGallery(filteredStones());
     }));
   $("#lbText").innerHTML =
-    (s.trans ? `<h4>Inscription</h4><div class="lbtrans">${esc(s.trans)}</div>` : "") +
+    (s.trans ? `<h4>Inscription${s.audio
+        ? ` <button id="audioBtn" title="Hear the Welsh read aloud">🔊 clywed</button>`
+        : ""}</h4><div class="lbtrans">${esc(s.trans)}</div>` : "") +
     (s.notes ? `<h4>Notes / translation</h4><div class="lbnotes">${esc(s.notes)}</div>` : "");
+  const ab = $("#audioBtn");
+  if (ab) ab.addEventListener("click", () => {
+    if (window._sgAudio && !window._sgAudio.paused) {
+      window._sgAudio.pause();
+      ab.classList.remove("on");
+      return;
+    }
+    window._sgAudio = new Audio(`${IMG}/audio/${s.id}.wav`);
+    window._sgAudio.onended = () => ab.classList.remove("on");
+    window._sgAudio.onerror = () =>
+      alert("Audio not available for this stone yet.");
+    window._sgAudio.play();
+    ab.classList.add("on");
+  });
   const cmpBtn = $("#cmpBtn");
   cmpBtn.textContent = compareId && compareId !== id
     ? "⇄ Compare with selected" : compareId === id
@@ -617,6 +653,7 @@ function openLightbox(id) {
 }
 function closeLightbox() {
   $("#lightbox").classList.add("hidden");
+  window._sgAudio?.pause();
   history.replaceState(null, "", location.pathname + location.search);
 }
 $("#lbClose").addEventListener("click", closeLightbox);
@@ -1050,6 +1087,11 @@ function update() {
     if (rm.ok) MORPHO = await rm.json();
   } catch (e) { /* shape space hidden if absent */ }
   if (MORPHO) $("#morphoTab").classList.remove("hidden");
+  try {
+    const rc = await fetch("data/constellation.json");
+    if (rc.ok) CONSTEL = await rc.json();
+  } catch (e) { /* constellation hidden if absent */ }
+  if (CONSTEL) $("#constelTab").classList.remove("hidden");
   Chart.defaults.font.family = '"Source Sans 3", sans-serif';
   Chart.defaults.color = "#5a6470";
   Chart.defaults.plugins.title.color = "#4a3f63";

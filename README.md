@@ -96,6 +96,13 @@ and publish when ready.
    (💡 on each photo: visitors drag a light across the stone). One-time
    setup: `pip3 install torch transformers` (~2GB) + app restart. After
    building, run Sync to R2.
+5d. **Welsh audio** (optional) — Analysis tab → **Record new Welsh
+   inscriptions** synthesizes each Welsh inscription with Piper's Welsh
+   voice and uploads it to R2 (needs `pip3 install piper-tts` once). The
+   site shows 🔊 on those inscriptions after Export + push.
+5e. **Constellation** (optional) — Analysis tab → **Embed new photos**
+   computes a visual-similarity embedding per photo (same torch install as
+   relief maps); the constellation view itself regenerates at Export.
 5c. **Shape space** — nothing to run: whenever you Export, the approved
    outlines are re-analyzed (geometric morphometrics, `docs/data/morpho.json`)
    and the site's Shape-space view updates — the PC scatter, decade-average

@@ -281,6 +281,30 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
 #cmpMorph span { color: #cfc6e0; font-size: 12px;
   font-family: "Jost", sans-serif; text-align: center; }
 
+/* audio button */
+#audioBtn { border: 1px solid var(--slate-mid); background: transparent;
+  color: var(--slate-mid); border-radius: 999px; padding: 1px 10px;
+  cursor: pointer; font: inherit; font-size: 12px; vertical-align: 1px;
+  text-transform: none; letter-spacing: 0; margin-left: 6px; }
+#audioBtn:hover { background: var(--slate-mid); color: var(--paper); }
+#audioBtn.on { background: var(--harbour); border-color: var(--harbour);
+  color: var(--paper); }
+
+/* visual constellation */
+#constelWrap { grid-column: 1 / -1; position: relative; height: 580px;
+  background: rgba(247,245,240,.95); border: 1px solid var(--line);
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(43,36,51,.25);
+  overflow: hidden; }
+.cnode { position: absolute; transform: translate(-50%, -50%);
+  cursor: pointer; transition: transform .15s; z-index: 1; }
+.cnode img { width: 52px; height: 52px; object-fit: cover;
+  border-radius: 8px; border: 2px solid var(--paper);
+  box-shadow: 0 2px 8px rgba(43,36,51,.35); display: block; }
+.cnode:hover { transform: translate(-50%, -50%) scale(2.1); z-index: 5; }
+.cHint { position: absolute; bottom: 6px; left: 0; right: 0;
+  text-align: center; color: var(--ordovician); font-size: 12.5px;
+  pointer-events: none; margin: 0; }
+
 .hidden { display: none !important; }
 
 /* fullscreen zoom viewer */

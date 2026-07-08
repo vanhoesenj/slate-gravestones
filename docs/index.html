@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-<link rel="stylesheet" href="site.css?v=15">
+<link rel="stylesheet" href="site.css?v=18">
 </head>
 <body>
 <header>
@@ -67,6 +67,19 @@
       in a space where distance means shape difference. Decade-average
       silhouettes and "similar shapes" suggestions come from the same
       analysis.</p>
+
+    <h4>Hearing the Welsh</h4>
+    <p>The 🔊 button reads Welsh inscriptions aloud using
+      <a href="https://github.com/rhasspy/piper">Piper</a>, an open-source
+      text-to-speech system with a Welsh voice — these englynion and hymn
+      verses were composed for the ear.</p>
+
+    <h4>The constellation</h4>
+    <p>The constellation view arranges photographs by visual similarity:
+      each image is embedded with OpenAI's open
+      <a href="https://github.com/openai/CLIP">CLIP</a> model and projected
+      to two dimensions, so stones with kindred carving drift together
+      regardless of where they stand.</p>
 
     <h4>Inscriptions &amp; translations</h4>
     <p>Transcriptions are drafted with the help of
@@ -135,6 +148,7 @@
           <button data-v="photos" class="on">Photos</button>
           <button data-v="outlines">Outlines</button>
           <button data-v="morpho" id="morphoTab" class="hidden">Shape space</button>
+          <button data-v="constel" id="constelTab" class="hidden">Constellation</button>
         </div>
       </div>
       <div id="gallery"></div>
@@ -189,6 +203,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="site.js?v=17"></script>
+<script src="site.js?v=18"></script>
 </body>
 </html>
