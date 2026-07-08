@@ -462,6 +462,29 @@ async function pollOutlineProgress() {
   }
 }
 
+$("#dpBuild").addEventListener("click", async () => {
+  $("#dpBuild").disabled = true;
+  try {
+    const r = await api("/api/depth/build", { method: "POST", body: {} });
+    if (!r.started) {
+      $("#dpProg").textContent = r.msg;
+      $("#dpBuild").disabled = false;
+      return;
+    }
+    pollDepthProgress();
+  } catch (err) {
+    $("#dpProg").textContent = err.message;
+    $("#dpBuild").disabled = false;
+  }
+});
+async function pollDepthProgress() {
+  const p = await api("/api/depth/progress");
+  $("#dpProg").textContent = p.running
+    ? `${p.done}/${p.total} — ${p.msg}` : p.msg;
+  if (p.running) setTimeout(pollDepthProgress, 2000);
+  else $("#dpBuild").disabled = false;
+}
+
 /* ---------- publish ---------- */
 $("#syncBtn").addEventListener("click", async () => {
   $("#syncStatus").textContent = "Syncing…";

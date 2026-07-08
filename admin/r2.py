@@ -43,11 +43,14 @@ def client():
     ), cfg["bucket"]
 
 
-def upload_photo(photo_id, thumb_path, disp_path, enh_path=None):
+def upload_photo(photo_id, thumb_path, disp_path, enh_path=None,
+                 depth_path=None):
     s3, bucket = client()
     files = [(thumb_path, "thumb.jpg"), (disp_path, "disp.jpg")]
     if enh_path and os.path.exists(enh_path):
         files.append((enh_path, "enh.jpg"))
+    if depth_path and os.path.exists(depth_path):
+        files.append((depth_path, "depth.jpg"))
     for path, name in files:
         s3.upload_file(path, bucket, f"img/{photo_id}/{name}",
                        ExtraArgs={"ContentType": "image/jpeg",

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-<link rel="stylesheet" href="site.css?v=13">
+<link rel="stylesheet" href="site.css?v=14">
 </head>
 <body>
 <header>
@@ -51,6 +51,22 @@
       contour into a small SVG. Every outline is reviewed by the curator
       against its photograph before publication; imperfect traces are
       rejected.</p>
+
+    <h4>Virtual raking light</h4>
+    <p>The 💡 viewer estimates a relief map of each stone's surface with
+      <a href="https://depth-anything-v2.github.io">Depth Anything V2</a>
+      (monocular depth estimation), then relights it in your browser with
+      WebGL — mimicking the grazing light gravestone scholars use in the
+      field. It is an interpretation of a single photograph, not a
+      measurement.</p>
+
+    <h4>Shape space</h4>
+    <p>The shape-space view applies geometric morphometrics to the approved
+      silhouettes: each outline is resampled to equally spaced points,
+      normalized, and analyzed by principal components — placing every stone
+      in a space where distance means shape difference. Decade-average
+      silhouettes and "similar shapes" suggestions come from the same
+      analysis.</p>
 
     <h4>Inscriptions &amp; translations</h4>
     <p>Transcriptions are drafted with the help of
@@ -117,6 +133,7 @@
         <div id="viewToggle">
           <button data-v="photos" class="on">Photos</button>
           <button data-v="outlines">Outlines</button>
+          <button data-v="morpho" id="morphoTab" class="hidden">Shape space</button>
         </div>
       </div>
       <div id="gallery"></div>
@@ -140,6 +157,17 @@
   <div id="cmpHint">click a photo to flip original / enhanced</div>
 </div>
 
+<div id="relief" class="hidden">
+  <canvas id="rlCanvas"></canvas>
+  <div id="rlBar">
+    <label>relief <input id="rlStrength" type="range" min="1" max="12"
+      step="0.5" value="5"></label>
+    <button id="rlAlbedo" class="on" title="Toggle photo color / plain stone">photo</button>
+    <button id="rlClose" title="Close">✕</button>
+  </div>
+  <div id="rlHint">move the mouse (or drag) to rake light across the stone</div>
+</div>
+
 <div id="zoomview" class="hidden">
   <img id="zvImg" draggable="false" alt="">
   <div id="zvBar">
@@ -159,6 +187,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="site.js?v=13"></script>
+<script src="site.js?v=14"></script>
 </body>
 </html>

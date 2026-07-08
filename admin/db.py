@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS photos (
     outline_path TEXT DEFAULT '',     -- normalized SVG path (viewBox 0 0 100 h)
     outline_h REAL,                   -- viewBox height matching outline_path
     outline_status TEXT DEFAULT '',   -- '', 'draft', 'approved', 'rejected'
+    has_depth INTEGER DEFAULT 0,      -- depth.jpg built (raking-light viewer)
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -127,6 +128,9 @@ def init():
         con.execute("ALTER TABLE photos ADD COLUMN outline_path TEXT DEFAULT ''")
         con.execute("ALTER TABLE photos ADD COLUMN outline_h REAL")
         con.execute("ALTER TABLE photos ADD COLUMN outline_status TEXT DEFAULT ''")
+        con.commit()
+    if "has_depth" not in pcols:
+        con.execute("ALTER TABLE photos ADD COLUMN has_depth INTEGER DEFAULT 0")
         con.commit()
     # backfill persons from legacy single-name stones (runs once)
     if (con.execute("SELECT COUNT(*) FROM persons").fetchone()[0] == 0 and

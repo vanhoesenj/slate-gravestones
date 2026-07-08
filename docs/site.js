@@ -3,7 +3,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-let DB, IMG = "", map, tagChart, decadeChart;
+let DB, MORPHO = null, IMG = "", map, tagChart, decadeChart, pcChart;
 const cemById = {}, tagById = {}, catById = {};
 const F = { country: "", state: "", cemetery: "", yearMin: null, yearMax: null,
             tags: new Set(), q: "" };
@@ -417,7 +417,15 @@ function renderDecadeChart(stones) {
   $("#" + id).addEventListener("change", () => renderTagChart(filteredStones())));
 
 /* ---------- gallery & lightbox ---------- */
+const ptsPath = (pts) =>
+  "M" + pts.map((p) => p[0] + "," + p[1]).join("L") + "Z";
+const ptsBox = (pts) => {
+  const h = Math.max(...pts.map((p) => p[1]));
+  return `0 0 100 ${Math.ceil(h)}`;
+};
+
 function renderGallery(stones) {
+  if (galleryView === "morpho") return renderMorpho(stones);
   const withOutline = stones.filter((s) => s.outline).length;
   $("#galleryHead").textContent = galleryView === "outlines"
     ? `${withOutline} of ${stones.length} gravestones have outlines`
@@ -459,12 +467,19 @@ function openLightbox(id) {
        <img loading="lazy" src="${imgUrl(p.id, "disp")}" data-id="${p.id}"
          data-v="disp" title="Click to flip between original and enhanced" alt="">
        <button class="zoomBtn" data-id="${p.id}" title="Full screen &amp; zoom">⛶</button>
+       ${p.depth ? `<button class="reliefBtn" data-id="${p.id}"
+         title="Raking light — drag a light across the stone">💡</button>` : ""}
      </div>`).join("");
   $("#lbPhotos").querySelectorAll(".zoomBtn").forEach((b) =>
     b.addEventListener("click", (e) => {
       e.stopPropagation();
       const im = b.parentElement.querySelector("img");
       openZoom(+b.dataset.id, im.dataset.v);
+    }));
+  $("#lbPhotos").querySelectorAll(".reliefBtn").forEach((b) =>
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openRelief(+b.dataset.id);
     }));
   $("#lbPhotos").querySelectorAll("img").forEach((im) => {
     im.addEventListener("click", () => {
@@ -501,8 +516,19 @@ function openLightbox(id) {
       <button id="cmpBtn"></button>
       <button id="linkBtn" title="Copy a direct link to this gravestone">🔗 copy link</button>
     </div>
+    ${MORPHO?.neighbors?.[id] ? `<div class="lbsim"><h5>Similar shapes</h5>
+      ${MORPHO.neighbors[id]
+        .map((nid) => DB.stones.find((x) => x.id === nid))
+        .filter(Boolean).slice(0, 4).map((n) => `
+        <button class="simBtn" data-id="${n.id}" title="${esc(n.title || "")}">
+          ${n.outline ? `<svg viewBox="${`0 0 100 ${Math.ceil(n.outline.h)}`}"
+            preserveAspectRatio="xMidYMax meet"><path d="${n.outline.d}"/></svg>` : ""}
+          <span>${esc((n.title || "Unnamed").slice(0, 22))}</span>
+        </button>`).join("")}</div>` : ""}
     <div class="lbhint">◐ Click a photo to flip between the original and an
       enhanced view that brings out carving and inscriptions.</div>`;
+  $("#lbInfo").querySelectorAll(".simBtn").forEach((b) =>
+    b.addEventListener("click", () => openLightbox(+b.dataset.id)));
   $("#lbText").innerHTML =
     (s.trans ? `<h4>Inscription</h4><div class="lbtrans">${esc(s.trans)}</div>` : "") +
     (s.notes ? `<h4>Notes / translation</h4><div class="lbnotes">${esc(s.notes)}</div>` : "");
@@ -570,12 +596,134 @@ $("#cmpClose").addEventListener("click", () =>
   $("#compare").classList.add("hidden"));
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
-  if (!$("#zoomview").classList.contains("hidden")) closeZoom();
+  if (!$("#relief").classList.contains("hidden")) closeRelief();
+  else if (!$("#zoomview").classList.contains("hidden")) closeZoom();
   else if (!$("#compare").classList.contains("hidden"))
     $("#compare").classList.add("hidden");
   else if (!$("#about").classList.contains("hidden"))
     $("#about").classList.add("hidden");
   else if (!$("#lightbox").classList.contains("hidden")) closeLightbox();
+});
+
+/* ---------- virtual raking light (WebGL) ---------- */
+const RL = { gl: null, prog: null, light: [0.6, 0.4], strength: 5,
+             albedo: 1, texel: [0, 0], ready: false };
+
+function rlShader(gl, type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function rlTexture(gl, unit, img) {
+  const t = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return t;
+}
+function rlDraw() {
+  if (!RL.ready) return;
+  const gl = RL.gl;
+  gl.uniform2fv(RL.uLight, RL.light);
+  gl.uniform1f(RL.uStrength, RL.strength);
+  gl.uniform1f(RL.uAlbedo, RL.albedo);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+function openRelief(pid) {
+  const color = new Image(), depth = new Image();
+  color.crossOrigin = depth.crossOrigin = "anonymous";
+  let loaded = 0;
+  const go = () => {
+    if (++loaded < 2) return;
+    const cv = $("#rlCanvas");
+    // fit the image to the viewport
+    const scale = Math.min((innerWidth - 40) / color.width,
+                           (innerHeight - 90) / color.height);
+    cv.width = Math.round(color.width * scale * devicePixelRatio);
+    cv.height = Math.round(color.height * scale * devicePixelRatio);
+    cv.style.width = Math.round(color.width * scale) + "px";
+    cv.style.height = Math.round(color.height * scale) + "px";
+    const gl = cv.getContext("webgl");
+    if (!gl) { alert("WebGL is not available in this browser."); return; }
+    RL.gl = gl;
+    const vs = rlShader(gl, gl.VERTEX_SHADER, `
+      attribute vec2 aPos; varying vec2 vUv;
+      void main(){ vUv = aPos*0.5+0.5; gl_Position = vec4(aPos,0.,1.); }`);
+    const fs = rlShader(gl, gl.FRAGMENT_SHADER, `
+      precision mediump float;
+      uniform sampler2D uColor, uDepth;
+      uniform vec2 uLight, uTexel;
+      uniform float uStrength, uAlbedo;
+      varying vec2 vUv;
+      void main(){
+        float hL = texture2D(uDepth, vUv - vec2(uTexel.x, 0.)).r;
+        float hR = texture2D(uDepth, vUv + vec2(uTexel.x, 0.)).r;
+        float hD = texture2D(uDepth, vUv - vec2(0., uTexel.y)).r;
+        float hU = texture2D(uDepth, vUv + vec2(0., uTexel.y)).r;
+        vec3 n = normalize(vec3((hL-hR)*uStrength, (hD-hU)*uStrength, 1.));
+        vec3 L = normalize(vec3(uLight, 0.55));
+        float diff = max(dot(n, L), 0.);
+        float spec = pow(max(dot(reflect(-L, n), vec3(0.,0.,1.)), 0.), 24.) * .12;
+        vec3 base = mix(vec3(.80,.79,.77), texture2D(uColor, vUv).rgb, uAlbedo);
+        gl_FragColor = vec4(base * (.22 + .9*diff) + spec, 1.);
+      }`);
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs);
+    gl.linkProgram(prog); gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER,
+      new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(prog, "aPos");
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    rlTexture(gl, 0, color);
+    rlTexture(gl, 1, depth);
+    gl.uniform1i(gl.getUniformLocation(prog, "uColor"), 0);
+    gl.uniform1i(gl.getUniformLocation(prog, "uDepth"), 1);
+    gl.uniform2f(gl.getUniformLocation(prog, "uTexel"),
+                 1.5 / depth.width, 1.5 / depth.height);
+    RL.uLight = gl.getUniformLocation(prog, "uLight");
+    RL.uStrength = gl.getUniformLocation(prog, "uStrength");
+    RL.uAlbedo = gl.getUniformLocation(prog, "uAlbedo");
+    gl.viewport(0, 0, cv.width, cv.height);
+    RL.ready = true;
+    $("#relief").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    rlDraw();
+  };
+  color.onload = go; depth.onload = go;
+  depth.onerror = () => alert("Relief map not available for this photo yet.");
+  color.src = imgUrl(pid, "disp");
+  depth.src = imgUrl(pid, "depth");
+}
+function closeRelief() {
+  $("#relief").classList.add("hidden");
+  RL.ready = false;
+  document.body.style.overflow = "";
+}
+$("#rlClose").addEventListener("click", closeRelief);
+$("#relief").addEventListener("pointermove", (e) => {
+  RL.light = [((e.clientX / innerWidth) * 2 - 1) * 1.4,
+              (1 - (e.clientY / innerHeight) * 2) * 1.4];
+  rlDraw();
+});
+$("#rlStrength").addEventListener("input", (e) => {
+  RL.strength = +e.target.value;
+  rlDraw();
+});
+$("#rlAlbedo").addEventListener("click", () => {
+  RL.albedo = RL.albedo ? 0 : 1;
+  $("#rlAlbedo").classList.toggle("on", !!RL.albedo);
+  $("#rlAlbedo").textContent = RL.albedo ? "photo" : "stone";
+  rlDraw();
 });
 
 /* ---------- about ---------- */
@@ -694,6 +842,95 @@ document.querySelectorAll("#viewToggle button").forEach((b) =>
     renderGallery(filteredStones());
   }));
 
+/* ---------- shape space (morphometrics) ---------- */
+let morphTimer = null;
+
+function renderMorpho(stones) {
+  const pts = stones.filter((s) => MORPHO.stones[s.id]);
+  $("#galleryHead").textContent =
+    `Shape space — ${pts.length} of ${MORPHO.n} analyzed silhouettes in view`;
+  const decades = Object.keys(MORPHO.decadeMeans);
+  $("#gallery").innerHTML = `
+    <div id="morphoWrap">
+      <div id="pcBox"><canvas id="pcChart"></canvas></div>
+      <div id="morphoSide">
+        <h3>The average stone, by decade</h3>
+        <div id="decadeRow">${decades.map((d) => `
+          <figure><svg viewBox="${ptsBox(MORPHO.decadeMeans[d])}"
+            preserveAspectRatio="xMidYMax meet">
+            <path d="${ptsPath(MORPHO.decadeMeans[d])}"/></svg>
+            <figcaption>${d}s</figcaption></figure>`).join("")}
+        </div>
+        ${decades.length > 1 ? `
+        <div id="morphPlay">
+          <svg id="morphSvg" viewBox="0 0 100 220"
+            preserveAspectRatio="xMidYMax meet"><path/></svg>
+          <button id="morphBtn">▶ morph through the decades</button>
+          <span id="morphLabel"></span>
+        </div>` : ""}
+        <p class="hint">Each dot is a gravestone placed by the geometry of its
+          silhouette (principal components of ${MORPHO.n} resampled outlines).
+          Nearby dots are similar shapes — clusters often mean one carver or
+          workshop. Click a dot to open the stone.</p>
+      </div>
+    </div>`;
+  // scatter, colored by decade
+  const byDec = {};
+  pts.forEach((s) => {
+    const d = s.year ? Math.floor(s.year / 10) * 10 + "s" : "undated";
+    (byDec[d] = byDec[d] || []).push(
+      { x: MORPHO.stones[s.id][0], y: MORPHO.stones[s.id][1], sid: s.id,
+        title: (s.title || "Unnamed") + yearsOf(s) });
+  });
+  const keys = Object.keys(byDec).sort();
+  pcChart?.destroy();
+  pcChart = new Chart($("#pcChart"), {
+    type: "scatter",
+    data: { datasets: keys.map((k, i) => ({
+      label: k, data: byDec[k], pointRadius: 7, pointHoverRadius: 9,
+      backgroundColor: PALETTE[i % PALETTE.length] + "cc" })) },
+    options: {
+      maintainAspectRatio: false, responsive: true,
+      onClick: (e, els) => {
+        if (els.length) {
+          const p = pcChart.data.datasets[els[0].datasetIndex]
+            .data[els[0].index];
+          openLightbox(p.sid);
+        }
+      },
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 12,
+                  font: { size: 11 } } },
+        tooltip: { callbacks: { label: (c) => c.raw.title } },
+      },
+      scales: {
+        x: { title: { display: true,
+             text: `PC1 — ${MORPHO.axes[0]?.explained ?? "?"}% of shape variation` } },
+        y: { title: { display: true,
+             text: `PC2 — ${MORPHO.axes[1]?.explained ?? "?"}%` } },
+      },
+    },
+  });
+  // morph animation between consecutive decade means
+  clearInterval(morphTimer);
+  const btn = $("#morphBtn");
+  if (btn) btn.addEventListener("click", () => {
+    const seq = decades.map((d) => MORPHO.decadeMeans[d]);
+    let i = 0, t = 0;
+    clearInterval(morphTimer);
+    morphTimer = setInterval(() => {
+      t += 0.04;
+      if (t >= 1) { t = 0; i = (i + 1) % (seq.length - 1); }
+      const a = seq[i], b = seq[i + 1];
+      const mix = a.map((p, k) =>
+        [p[0] + (b[k][0] - p[0]) * t, p[1] + (b[k][1] - p[1]) * t]);
+      $("#morphSvg path").setAttribute("d", ptsPath(mix));
+      $("#morphLabel").textContent =
+        `${decades[i]}s → ${decades[i + 1]}s`;
+    }, 40);
+  });
+}
+
 /* ---------- update cycle ---------- */
 function update() {
   galleryShown = GALLERY_PAGE;
@@ -713,6 +950,11 @@ function update() {
 
 /* ---------- init ---------- */
 (async function init() {
+  try {
+    const rm = await fetch("data/morpho.json");
+    if (rm.ok) MORPHO = await rm.json();
+  } catch (e) { /* shape space hidden if absent */ }
+  if (MORPHO) $("#morphoTab").classList.remove("hidden");
   Chart.defaults.font.family = '"Source Sans 3", sans-serif';
   Chart.defaults.color = "#5a6470";
   Chart.defaults.plugins.title.color = "#4a3f63";

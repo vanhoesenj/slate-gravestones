@@ -40,10 +40,12 @@ def export():
         tags_by_stone.setdefault(r["stone_id"], []).append(r["tag_id"])
     photos_by_stone = {}
     for r in con.execute(
-            "SELECT id, stone_id, width AS w, height AS h, is_primary, r2_synced "
-            "FROM photos ORDER BY is_primary DESC, id"):
-        photos_by_stone.setdefault(r["stone_id"], []).append(
-            {"id": r["id"], "w": r["w"], "h": r["h"]})
+            "SELECT id, stone_id, width AS w, height AS h, is_primary, "
+            "r2_synced, has_depth FROM photos ORDER BY is_primary DESC, id"):
+        p = {"id": r["id"], "w": r["w"], "h": r["h"]}
+        if r["has_depth"]:
+            p["depth"] = 1
+        photos_by_stone.setdefault(r["stone_id"], []).append(p)
     # approved outlines only; primary photo's outline wins
     outline_by_stone = {}
     for r in con.execute(
@@ -66,8 +68,29 @@ def export():
     os.makedirs(os.path.dirname(os.path.abspath(OUT_PATH)), exist_ok=True)
     with open(OUT_PATH, "w") as f:
         json.dump(data, f, separators=(",", ":"))
+
+    # shape space (morphometrics) — recomputed automatically from approved
+    # outlines; the site hides the feature if the file is absent
+    morpho_path = os.path.join(os.path.dirname(os.path.abspath(OUT_PATH)),
+                               "morpho.json")
+    morpho_n = 0
+    try:
+        import morpho_core
+        years = {s["id"]: s["year"] for s in data["stones"]}
+        morpho = morpho_core.analyze(
+            {sid: o["d"] for sid, o in outline_by_stone.items()}, years)
+        if morpho:
+            with open(morpho_path, "w") as f:
+                json.dump(morpho, f, separators=(",", ":"))
+            morpho_n = morpho["n"]
+        elif os.path.exists(morpho_path):
+            os.remove(morpho_path)
+    except Exception as e:
+        print(f"morphometrics skipped: {e}")
+
     return {"stones": len(data["stones"]),
             "cemeteries": len(data["cemeteries"]),
+            "shapes_analyzed": morpho_n,
             "path": os.path.abspath(OUT_PATH)}
 
 

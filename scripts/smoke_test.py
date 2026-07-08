@@ -48,6 +48,8 @@ def main():
     # real one safe and restore it afterwards
     lib_path = os.path.join(ROOT, "docs", "data", "library.json")
     lib_backup = open(lib_path).read() if os.path.exists(lib_path) else None
+    mor_path = os.path.join(ROOT, "docs", "data", "morpho.json")
+    mor_backup = open(mor_path).read() if os.path.exists(mor_path) else None
 
     import app as appmod
     c = appmod.app.test_client()
@@ -160,6 +162,9 @@ def main():
     con.execute("DELETE FROM categories WHERE id=?", (newcat["id"],))
     con.commit()
     con.close()
+    if mor_backup is not None:
+        with open(mor_path, "w") as f:
+            f.write(mor_backup)  # restore the real shape-space data
     if lib_backup is not None:
         with open(lib_path, "w") as f:
             f.write(lib_backup)  # restore the real export

@@ -151,6 +151,17 @@
       <span id="olCounts"></span>
     </div>
     <div id="olGrid" class="photogrid"></div>
+
+    <h2 style="margin-top:26px">Relief maps — virtual raking light</h2>
+    <p class="hint">Builds an AI depth map per photo, powering the site's
+      raking-light viewer (visitors drag a light across the stone). One-time
+      setup: <code>pip3 install torch transformers</code> (~2GB), then restart
+      the admin app. After building, run <strong>Sync images to R2</strong>
+      on the Publish tab.</p>
+    <div class="btnrow">
+      <button id="dpBuild" class="primary">Build new relief maps</button>
+      <span id="dpProg"></span>
+    </div>
   </section>
 
   <!-- PUBLISH -->

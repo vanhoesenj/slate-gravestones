@@ -31,7 +31,7 @@ def index():
 
 @app.get("/media/<int:photo_id>/<name>")
 def media(photo_id, name):
-    if name not in ("thumb.jpg", "disp.jpg", "enh.jpg"):
+    if name not in ("thumb.jpg", "disp.jpg", "enh.jpg", "depth.jpg"):
         abort(404)
     return send_from_directory(images.photo_dir(photo_id), name)
 
@@ -495,6 +495,74 @@ def set_outline_status(pid):
     return jsonify({"ok": True})
 
 
+# ---------- relief maps (virtual raking light) ----------
+
+DEPTH_PROG = {"running": False, "total": 0, "done": 0, "ok": 0,
+              "failed": 0, "msg": ""}
+
+
+def _depth_worker(ids):
+    import depth_core
+    try:
+        DEPTH_PROG["msg"] = "loading depth model (first run downloads ~100MB)…"
+        depth_core.get_pipe()
+        con = db.connect()
+        for pid in ids:
+            DEPTH_PROG["msg"] = f"estimating depth for photo #{pid}…"
+            _t, disp, _e = images.derivative_paths(pid)
+            out = os.path.join(images.photo_dir(pid), "depth.jpg")
+            try:
+                depth_core.build_depth(disp, out)
+                con.execute("UPDATE photos SET has_depth=1, r2_synced=0 "
+                            "WHERE id=?", (pid,))
+                DEPTH_PROG["ok"] += 1
+            except Exception as e:
+                DEPTH_PROG["failed"] += 1
+                DEPTH_PROG["msg"] = f"photo #{pid} failed: {e}"
+            con.commit()
+            DEPTH_PROG["done"] += 1
+        con.close()
+        DEPTH_PROG["msg"] = (f"done — {DEPTH_PROG['ok']} built, "
+                             f"{DEPTH_PROG['failed']} failed. "
+                             "Now run 'Sync images to R2' on the Publish tab.")
+    except Exception as e:
+        DEPTH_PROG["msg"] = "error: " + str(e)
+    finally:
+        DEPTH_PROG["running"] = False
+
+
+@app.post("/api/depth/build")
+def depth_build():
+    if DEPTH_PROG["running"]:
+        return jsonify({"error": "already running"}), 400
+    try:
+        import torch  # noqa: F401
+        import transformers  # noqa: F401
+    except ImportError:
+        return jsonify({"error":
+            "Depth model not installed — run: pip3 install torch transformers "
+            "(one-time, ~2GB) then restart the admin app."}), 400
+    con = db.connect()
+    ids = []
+    for r in con.execute("SELECT id FROM photos WHERE has_depth=0 ORDER BY id"):
+        _t, disp, _e = images.derivative_paths(r["id"])
+        if os.path.exists(disp):
+            ids.append(r["id"])
+    con.close()
+    if not ids:
+        return jsonify({"started": False,
+                        "msg": "No new photos — all relief maps built."})
+    DEPTH_PROG.update(running=True, total=len(ids), done=0, ok=0,
+                      failed=0, msg="starting…")
+    threading.Thread(target=_depth_worker, args=(ids,), daemon=True).start()
+    return jsonify({"started": True, "total": len(ids)})
+
+
+@app.get("/api/depth/progress")
+def depth_progress():
+    return jsonify(DEPTH_PROG)
+
+
 # ---------- transcription drafts ----------
 # A drafts file (data/transcription_drafts.json) is a list of
 # {"stone_id": 3, "transcription": "ER COF\nam\n…", "translation": "In memory…"}.
@@ -566,7 +634,8 @@ def r2_sync():
         pid = row["id"]
         try:
             thumb, disp, enh = images.derivative_paths(pid)
-            r2.upload_photo(pid, thumb, disp, enh)
+            depth = os.path.join(images.photo_dir(pid), "depth.jpg")
+            r2.upload_photo(pid, thumb, disp, enh, depth)
             con.execute("UPDATE photos SET r2_synced=1 WHERE id=?", (pid,))
             con.commit()
             done.append(pid)

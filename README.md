@@ -91,6 +91,16 @@ and publish when ready.
    outlines publish (they power the site's Photos ⁄ Outlines gallery toggle).
    Needs `pip3 install rembg onnxruntime` once; a CLI equivalent lives at
    `scripts/extract_outlines.py` (supports `--force` / `--photo N`).
+5b. **Relief maps** (optional) — Outlines tab → **Build new relief maps**
+   creates an AI depth map per photo for the site's raking-light viewer
+   (💡 on each photo: visitors drag a light across the stone). One-time
+   setup: `pip3 install torch transformers` (~2GB) + app restart. After
+   building, run Sync to R2.
+5c. **Shape space** — nothing to run: whenever you Export, the approved
+   outlines are re-analyzed (geometric morphometrics, `docs/data/morpho.json`)
+   and the site's Shape-space view updates — the PC scatter, decade-average
+   silhouettes, the decade morph, and "similar shapes" in each stone's
+   detail panel. Appears once 3+ outlines are approved.
 6. **Gravestones tab** — the editing pass: title, people on the stone
    (name/birth/death rows — add as many as the marker carries), correct the
    inscription draft and remove its `[DRAFT]` prefix, notes/translation, and
