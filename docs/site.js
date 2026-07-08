@@ -792,8 +792,11 @@ function openRelief(pid) {
     "needs a CORS policy (Settings → CORS Policy → allow GET from this " +
     "site) — WebGL requires CORS-approved images.");
   color.onerror = depth.onerror;
-  color.src = imgUrl(pid, "disp");
-  depth.src = imgUrl(pid, "depth");
+  // "?cors" gives these requests their own cache key: copies cached before
+  // the bucket's CORS policy existed (browser or edge) lack the CORS headers
+  // WebGL needs, and would otherwise be served forever
+  color.src = imgUrl(pid, "disp") + "?cors";
+  depth.src = imgUrl(pid, "depth") + "?cors";
 }
 function closeRelief() {
   $("#relief").classList.add("hidden");
