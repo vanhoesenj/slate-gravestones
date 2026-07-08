@@ -46,10 +46,17 @@ def main():
 
     # publishing during the test overwrites docs/data/library.json — keep the
     # real one safe and restore it afterwards
-    lib_path = os.path.join(ROOT, "docs", "data", "library.json")
-    lib_backup = open(lib_path).read() if os.path.exists(lib_path) else None
-    mor_path = os.path.join(ROOT, "docs", "data", "morpho.json")
-    mor_backup = open(mor_path).read() if os.path.exists(mor_path) else None
+    # back up EVERY published data file — the test's publish step must never
+    # be able to overwrite or delete real exports (learned the hard way)
+    data_dir = os.path.join(ROOT, "docs", "data")
+    backups = {}
+    if os.path.isdir(data_dir):
+        for name in os.listdir(data_dir):
+            if name.endswith(".json"):
+                p = os.path.join(data_dir, name)
+                backups[p] = open(p).read()
+    lib_path = os.path.join(data_dir, "library.json")
+    lib_backup = backups.get(lib_path)
 
     import app as appmod
     c = appmod.app.test_client()
@@ -162,12 +169,11 @@ def main():
     con.execute("DELETE FROM categories WHERE id=?", (newcat["id"],))
     con.commit()
     con.close()
-    if mor_backup is not None:
-        with open(mor_path, "w") as f:
-            f.write(mor_backup)  # restore the real shape-space data
+    for p, content in backups.items():
+        with open(p, "w") as f:
+            f.write(content)     # restore every real data file
     if lib_backup is not None:
-        with open(lib_path, "w") as f:
-            f.write(lib_backup)  # restore the real export
+        pass                     # already restored above
     else:
         try:
             os.remove(pub["path"])
