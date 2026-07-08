@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-<link rel="stylesheet" href="site.css?v=18">
+<link rel="stylesheet" href="site.css?v=20">
 </head>
 <body>
 <header>
@@ -68,6 +68,22 @@
       silhouettes and "similar shapes" suggestions come from the same
       analysis.</p>
 
+    <h4>Letters</h4>
+    <p>The Letters view is a type-specimen sheet cut from the stones
+      themselves: individual carved characters are located with
+      <a href="https://github.com/tesseract-ocr/tesseract">Tesseract</a> OCR
+      on the enhanced images, cropped, and grouped by character. "Arrange by
+      similarity" clusters letterforms by shape — carvers betray themselves
+      in their letterforms, so clustering is evidence for attributing
+      unsigned stones to shared hands.</p>
+
+    <h4>Semantic search</h4>
+    <p>The ✨ button ranks the collection by meaning rather than exact words,
+      using a small open language model
+      (<a href="https://huggingface.co/Xenova/all-MiniLM-L6-v2">MiniLM</a>)
+      that runs entirely in your browser — no query ever leaves your
+      device.</p>
+
     <h4>Hearing the Welsh</h4>
     <p>The 🔊 button reads Welsh inscriptions aloud using
       <a href="https://github.com/rhasspy/piper">Piper</a>, an open-source
@@ -102,7 +118,10 @@
   <aside id="filters">
     <h2>Filter</h2>
     <label>Search
-      <input id="fSearch" type="search" placeholder="Name, inscription, notes…"></label>
+      <div class="range">
+        <input id="fSearch" type="search" placeholder="Name, inscription, notes…">
+        <button id="semBtn" title="Semantic search: rank by meaning, not just words">✨</button>
+      </div></label>
     <label>Country <select id="fCountry"><option value="">All</option></select></label>
     <label>State / Province <select id="fState"><option value="">All</option></select></label>
     <label>Cemetery <select id="fCemetery"><option value="">All</option></select></label>
@@ -149,6 +168,7 @@
           <button data-v="outlines">Outlines</button>
           <button data-v="morpho" id="morphoTab" class="hidden">Shape space</button>
           <button data-v="constel" id="constelTab" class="hidden">Constellation</button>
+          <button data-v="letters" id="lettersTab" class="hidden">Letters</button>
         </div>
       </div>
       <div id="gallery"></div>
@@ -203,6 +223,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="site.js?v=19"></script>
+<script src="site.js?v=20"></script>
 </body>
 </html>

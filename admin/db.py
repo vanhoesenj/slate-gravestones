@@ -72,6 +72,15 @@ CREATE TABLE IF NOT EXISTS tags (
     UNIQUE(category_id, name)
 );
 
+CREATE TABLE IF NOT EXISTS letters (
+    id INTEGER PRIMARY KEY,
+    photo_id INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+    stone_id INTEGER NOT NULL,
+    ch TEXT NOT NULL,                 -- the recognized character
+    conf REAL,
+    status TEXT DEFAULT 'ok'          -- 'ok' | 'bad' (curator-rejected)
+);
+
 CREATE TABLE IF NOT EXISTS photo_emb (
     photo_id INTEGER PRIMARY KEY REFERENCES photos(id) ON DELETE CASCADE,
     vec TEXT NOT NULL                 -- JSON list, unit-norm CLIP embedding
@@ -140,6 +149,9 @@ def init():
         con.commit()
     if "has_depth" not in pcols:
         con.execute("ALTER TABLE photos ADD COLUMN has_depth INTEGER DEFAULT 0")
+        con.commit()
+    if "letters_scanned" not in pcols:
+        con.execute("ALTER TABLE photos ADD COLUMN letters_scanned INTEGER DEFAULT 0")
         con.commit()
     # backfill persons from legacy single-name stones (runs once)
     if (con.execute("SELECT COUNT(*) FROM persons").fetchone()[0] == 0 and

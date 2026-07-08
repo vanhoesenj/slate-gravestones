@@ -94,6 +94,15 @@ Setup below.
   inscription afterward.
 - **Embed new photos** — visual-similarity embedding per photo (CLIP). The
   constellation view regenerates at Export from primary photos.
+- **Find new letterforms** — locates individual carved characters in the
+  enhanced photos (Tesseract OCR) and crops each one. Review below the
+  button: pick a letter, ✕ rejects a bad crop, ✎ fixes a misread character.
+  At Export the site's Letters view becomes a type-specimen sheet with
+  per-letter similarity clustering. **Carver attribution workflow:** use the
+  Letters view (and shape similarity) to find stones sharing a hand, create
+  a single-select "Carver" category on the Tags tab, and tag the group —
+  named carver if documented, "Workshop A (unattributed)" if not. Carver
+  then becomes a site filter, chartable and mappable like everything else.
 
 ### Publish
 
@@ -178,6 +187,7 @@ One-time scripts, safe to re-run: `scripts/restore_notes.py`,
 | Outlines | `pip3 install rembg onnxruntime` | ~170MB model |
 | Relief maps & constellation | `pip3 install torch transformers` (~2GB) | ~100MB + ~600MB models |
 | Welsh audio | `pip3 install piper-tts` | ~65MB voice |
+| Letterforms | `brew install tesseract` + `pip3 install pytesseract` | — |
 
 Restart the admin app after any install. R2 setup (bucket, public URL, API
 token, **CORS policy allowing GET** — required by the raking-light viewer)

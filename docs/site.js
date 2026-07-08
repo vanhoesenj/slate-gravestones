@@ -3,8 +3,8 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-let DB, MORPHO = null, CONSTEL = null, IMG = "", map, tagChart, decadeChart,
-    pcChart;
+let DB, MORPHO = null, CONSTEL = null, LETTERS = null, IMG = "", map,
+    tagChart, decadeChart, pcChart;
 const cemById = {}, tagById = {}, catById = {};
 const F = { country: "", state: "", cemetery: "", yearMin: null, yearMax: null,
             tags: new Set(), q: "" };
@@ -146,6 +146,7 @@ function buildTagFilters() {
     update();
   }));
 $("#fSearch").addEventListener("input", () => {
+  SEM.rank = null;   // typing returns to keyword filtering
   clearTimeout(window._sq);
   window._sq = setTimeout(() => {
     F.q = $("#fSearch").value.trim().toLowerCase();
@@ -444,6 +445,17 @@ const ptsBox = (pts) => {
 
 function renderSimBanner() {
   const el = $("#simBanner");
+  if (similarityRef == null && SEM.rank) {
+    el.classList.remove("hidden");
+    el.innerHTML = `✨ <span>ranked by meaning:
+      <strong>${esc(SEM.query)}</strong></span>
+      <button id="simClear" title="Clear semantic search">✕</button>`;
+    $("#simClear").addEventListener("click", () => {
+      SEM.rank = null;
+      renderGallery(filteredStones());
+    });
+    return;
+  }
   if (similarityRef == null || !MORPHO?.stones?.[similarityRef]) {
     el.classList.add("hidden");
     return;
@@ -481,10 +493,121 @@ function renderConstel(stones) {
     el.addEventListener("click", () => openLightbox(+el.dataset.id)));
 }
 
+/* ---------- letters (type specimen) view ---------- */
+let letterCh = null, letterSim = false;
+
+function renderLetters(stones) {
+  const ids = new Set(stones.map((s) => s.id));
+  const rows = LETTERS.letters.filter((l) => ids.has(l[2]));
+  const counts = {};
+  rows.forEach((l) => counts[l[1]] = (counts[l[1]] || 0) + 1);
+  const chars = Object.keys(counts).sort();
+  if (!letterCh || !counts[letterCh])
+    letterCh = chars.sort((a, b) => counts[b] - counts[a])[0];
+  const sel = rows.filter((l) => l[1] === letterCh);
+  $("#galleryHead").textContent =
+    `Letters — ${rows.length} carved characters in view`;
+  $("#gallery").innerHTML = `
+    <div id="lettersWrap">
+      <div id="alphaStrip">${chars.sort().map((c) =>
+        `<button class="alpha ${c === letterCh ? "on" : ""}" data-ch="${c}">
+           ${c}<span>${counts[c]}</span></button>`).join("")}
+        <label class="chk"><input type="checkbox" id="ltSimChk"
+          ${letterSim ? "checked" : ""}> arrange by similarity</label>
+      </div>
+      <div id="specimen" class="${letterSim ? "sim" : "grid"}">
+        ${sel.map((l) => {
+          const st = DB.stones.find((s) => s.id === l[2]);
+          const pos = letterSim
+            ? `style="left:${(l[3] * 100).toFixed(1)}%; top:${(l[4] * 100).toFixed(1)}%"`
+            : "";
+          return `<figure class="glyph" data-stone="${l[2]}" ${pos}
+            title="${esc(st?.title || "")}${st ? yearsOf(st) : ""}">
+            <img loading="lazy" src="${IMG}/letters/${l[0]}.jpg" alt="${l[1]}">
+            <figcaption>${st?.year || ""}</figcaption></figure>`;
+        }).join("")}
+      </div>
+      <p class="hint" style="margin:8px 2px 0">Every carved "${letterCh}" in
+        the current selection${letterSim
+          ? " — arranged so similar letterforms cluster (evidence for shared carvers)"
+          : ""}. Click a letter to open its gravestone.</p>
+    </div>`;
+  $("#gallery").querySelectorAll(".alpha").forEach((b) =>
+    b.addEventListener("click", () => {
+      letterCh = b.dataset.ch;
+      renderGallery(filteredStones());
+    }));
+  $("#ltSimChk")?.addEventListener("change", (e) => {
+    letterSim = e.target.checked;
+    renderGallery(filteredStones());
+  });
+  $("#gallery").querySelectorAll(".glyph").forEach((el) =>
+    el.addEventListener("click", () => openLightbox(+el.dataset.stone)));
+}
+
+/* ---------- semantic search ---------- */
+const SEM = { pipe: null, vecs: null, rank: null, query: "" };
+
+function stoneText(s) {
+  const c = cemById[s.cem];
+  const tagNames = s.tags.map((t) => tagById[t]?.name).filter(Boolean);
+  const people = (s.persons || []).map(personLine).join("; ");
+  return `${s.title || ""}. ${people}. ${tagNames.join(", ")}. ` +
+    `${(s.trans || "").replace(/\[DRAFT\]\s*/g, "")}. ${s.notes || ""}. ` +
+    `${c.name}, ${c.state || ""}.`;
+}
+
+async function semanticSearch(query) {
+  const btn = $("#semBtn");
+  btn.disabled = true;
+  try {
+    if (!SEM.pipe) {
+      btn.textContent = "…";
+      const { pipeline } = await import(
+        "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
+      SEM.pipe = await pipeline("feature-extraction",
+        "Xenova/all-MiniLM-L6-v2");
+    }
+    const embed = async (t) => (await SEM.pipe(t,
+      { pooling: "mean", normalize: true })).data;
+    if (!SEM.vecs) {
+      btn.textContent = "⋯";
+      SEM.vecs = {};
+      for (const s of DB.stones) SEM.vecs[s.id] = await embed(stoneText(s));
+    }
+    const qv = await embed(query);
+    SEM.rank = {};
+    for (const s of DB.stones) {
+      let d = 0;
+      const v = SEM.vecs[s.id];
+      for (let i = 0; i < qv.length; i++) d += qv[i] * v[i];
+      SEM.rank[s.id] = d;
+    }
+    SEM.query = query;
+    renderGallery(filteredStones());
+  } catch (err) {
+    alert("Semantic search unavailable: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✨";
+  }
+}
+$("#semBtn").addEventListener("click", () => {
+  const q = $("#fSearch").value.trim();
+  if (!q) { alert("Type what you're looking for first — e.g. " +
+    "\"young mothers with willow imagery\" — then press ✨."); return; }
+  F.q = "";           // semantic replaces the keyword filter
+  semanticSearch(q);
+});
+
 function renderGallery(stones) {
   renderSimBanner();
   if (galleryView === "morpho") return renderMorpho(stones);
   if (galleryView === "constel") return renderConstel(stones);
+  if (galleryView === "letters") return renderLetters(stones);
+  if (SEM.rank && similarityRef == null) {
+    stones = [...stones].sort((a, b) => SEM.rank[b.id] - SEM.rank[a.id]);
+  }
   const sim = similarityRef != null && MORPHO?.stones?.[similarityRef];
   if (sim) {
     stones = stones.filter((s) => MORPHO.stones[s.id])
@@ -512,7 +635,10 @@ function renderGallery(stones) {
     }
     const badge = sim && s.id !== similarityRef
       ? `<span class="simBadge">Δ ${shapeDist(similarityRef, s.id).toFixed(2)}</span>`
-      : sim ? `<span class="simBadge ref">reference</span>` : "";
+      : sim ? `<span class="simBadge ref">reference</span>`
+      : SEM.rank
+      ? `<span class="simBadge">${Math.round(SEM.rank[s.id] * 100)}%</span>`
+      : "";
     return `<div class="stone" data-id="${s.id}">
       <img loading="lazy" src="${imgUrl(s.photos[0].id, "thumb")}" alt="">
       ${badge}${cap}
@@ -1094,6 +1220,11 @@ function update() {
     if (rc.ok) CONSTEL = await rc.json();
   } catch (e) { /* constellation hidden if absent */ }
   if (CONSTEL) $("#constelTab").classList.remove("hidden");
+  try {
+    const rl = await fetch("data/letters.json", { cache: "no-cache" });
+    if (rl.ok) LETTERS = await rl.json();
+  } catch (e) { /* letters hidden if absent */ }
+  if (LETTERS) $("#lettersTab").classList.remove("hidden");
   Chart.defaults.font.family = '"Source Sans 3", sans-serif';
   Chart.defaults.color = "#5a6470";
   Chart.defaults.plugins.title.color = "#4a3f63";

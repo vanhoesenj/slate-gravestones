@@ -183,6 +183,23 @@
       <button id="ceBuild" class="primary">Embed new photos</button>
       <span id="ceProg"></span>
     </div>
+
+    <h2 style="margin-top:26px">Letterforms</h2>
+    <p class="hint">Finds individual carved letters in the enhanced photos
+      (Tesseract OCR: <code>brew install tesseract</code> +
+      <code>pip3 install pytesseract</code>) and crops each one — the site's
+      Letters view becomes a type-specimen sheet of the whole corpus, with
+      per-letter similarity clustering for carver attribution. Review below:
+      ✕ rejects a bad crop, ✎ fixes a misread character.</p>
+    <div class="btnrow">
+      <button id="ltBuild" class="primary">Find new letterforms</button>
+      <span id="ltProg"></span>
+    </div>
+    <div class="btnrow">
+      <select id="ltCh"><option value="">— pick a letter —</option></select>
+      <span id="ltCount" class="hint"></span>
+    </div>
+    <div id="ltGrid" class="photogrid"></div>
   </section>
 
   <!-- PUBLISH -->

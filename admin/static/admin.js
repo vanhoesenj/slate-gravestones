@@ -502,6 +502,41 @@ function bindJob(btnId, progId, startUrl, progUrl) {
 bindJob("#auBuild", "#auProg", "/api/audio/build", "/api/audio/progress");
 bindJob("#ceBuild", "#ceProg", "/api/constellation/build",
         "/api/constellation/progress");
+bindJob("#ltBuild", "#ltProg", "/api/letters/build", "/api/letters/progress");
+
+async function loadLetters() {
+  const ch = $("#ltCh").value;
+  const r = await api("/api/letters?ch=" + encodeURIComponent(ch));
+  const opts = Object.keys(r.counts).sort()
+    .map((c) => `<option value="${c}" ${c === ch ? "selected" : ""}>
+      ${c} (${r.counts[c]})</option>`).join("");
+  $("#ltCh").innerHTML = `<option value="">— pick a letter —</option>` + opts;
+  $("#ltCount").textContent =
+    Object.values(r.counts).reduce((a, b) => a + b, 0) + " letters total";
+  $("#ltGrid").innerHTML = r.letters.map((l) => `
+    <div class="card ltcard">
+      <img loading="lazy" src="/media_letters/${l.id}.jpg">
+      <div class="cap">#${l.stone_id} ${esc((l.title || "").slice(0, 18))}</div>
+      <div class="btnrow olbtns">
+        <button data-id="${l.id}" data-act="bad" title="Reject crop">✕</button>
+        <button data-id="${l.id}" data-act="ch" title="Fix character">✎</button>
+      </div>
+    </div>`).join("");
+  $("#ltGrid").querySelectorAll("button").forEach((b) =>
+    b.addEventListener("click", async () => {
+      if (b.dataset.act === "bad") {
+        await api(`/api/letters/${b.dataset.id}`, { method: "PUT",
+          body: { status: "bad" } });
+      } else {
+        const c = prompt("Correct character:");
+        if (!c) return;
+        await api(`/api/letters/${b.dataset.id}`, { method: "PUT",
+          body: { ch: c } });
+      }
+      loadLetters();
+    }));
+}
+$("#ltCh").addEventListener("change", loadLetters);
 
 $("#dpBuild").addEventListener("click", async () => {
   $("#dpBuild").disabled = true;
@@ -588,7 +623,7 @@ function renderPubStatus() {
     refreshDrafts();
   });
   document.querySelector('[data-tab="outlines"]').addEventListener("click",
-    loadOutlines);
+    () => { loadOutlines(); loadLetters(); });
   let guideLoaded = false;
   document.querySelector('[data-tab="guide"]').addEventListener("click",
     async () => {

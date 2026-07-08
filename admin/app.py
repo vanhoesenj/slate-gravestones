@@ -711,6 +711,114 @@ def emb_progress():
     return jsonify(EMB_PROG)
 
 
+# ---------- letterforms ----------
+
+LET_PROG = {"running": False, "total": 0, "done": 0, "ok": 0,
+            "failed": 0, "msg": ""}
+
+
+def _letters_worker(rows):
+    import letters_core
+    try:
+        con = db.connect()
+        for pid, sid in rows:
+            LET_PROG["msg"] = f"reading letters on photo #{pid}…"
+            _t, _d, enh = images.derivative_paths(pid)
+            try:
+                found, img = letters_core.extract_letters(enh)
+                for ch, box, conf in found:
+                    cur = con.execute(
+                        "INSERT INTO letters(photo_id, stone_id, ch, conf) "
+                        "VALUES(?,?,?,?)", (pid, sid, ch, conf))
+                    lid = cur.lastrowid
+                    path = letters_core.save_crop(img, box, lid)
+                    if r2.r2_configured():
+                        r2.upload_object(f"letters/{lid}.jpg", path,
+                                         "image/jpeg")
+                    LET_PROG["ok"] += 1
+                con.execute("UPDATE photos SET letters_scanned=1 WHERE id=?",
+                            (pid,))
+            except Exception as e:
+                LET_PROG["failed"] += 1
+                LET_PROG["msg"] = f"photo #{pid} failed: {e}"
+            con.commit()
+            LET_PROG["done"] += 1
+        con.close()
+        LET_PROG["msg"] = (f"done — {LET_PROG['ok']} letters found across "
+                           f"{LET_PROG['done']} photos. Review below, then "
+                           "Export + push.")
+    except Exception as e:
+        LET_PROG["msg"] = "error: " + str(e)
+    finally:
+        LET_PROG["running"] = False
+
+
+@app.post("/api/letters/build")
+def letters_build():
+    if LET_PROG["running"]:
+        return jsonify({"error": "already running"}), 400
+    try:
+        import pytesseract
+        pytesseract.get_tesseract_version()
+    except Exception:
+        return jsonify({"error": "Tesseract not available — run: "
+                        "brew install tesseract && pip3 install pytesseract, "
+                        "then restart the admin app."}), 400
+    con = db.connect()
+    rows = []
+    for r in con.execute("SELECT id, stone_id FROM photos "
+                         "WHERE letters_scanned=0 ORDER BY id"):
+        if os.path.exists(images.derivative_paths(r["id"])[2]):
+            rows.append((r["id"], r["stone_id"]))
+    con.close()
+    if not rows:
+        return jsonify({"started": False, "msg": "All photos scanned."})
+    LET_PROG.update(running=True, total=len(rows), done=0, ok=0,
+                    failed=0, msg="starting…")
+    threading.Thread(target=_letters_worker, args=(rows,), daemon=True).start()
+    return jsonify({"started": True, "total": len(rows)})
+
+
+@app.get("/api/letters/progress")
+def letters_progress():
+    return jsonify(LET_PROG)
+
+
+@app.get("/api/letters")
+def letters_list():
+    ch = request.args.get("ch", "")
+    con = db.connect()
+    counts = {r["ch"]: r["n"] for r in con.execute(
+        "SELECT ch, COUNT(*) n FROM letters WHERE status='ok' GROUP BY ch")}
+    rows = [dict(r) for r in con.execute(
+        "SELECT l.id, l.ch, l.stone_id, l.conf, s.title FROM letters l "
+        "JOIN stones s ON s.id=l.stone_id "
+        "WHERE l.status='ok' AND l.ch=? ORDER BY l.id", (ch,))] if ch else []
+    con.close()
+    return jsonify({"counts": counts, "letters": rows})
+
+
+@app.put("/api/letters/<int:lid>")
+def letters_update(lid):
+    d = request.json
+    con = db.connect()
+    if d.get("status") in ("ok", "bad"):
+        con.execute("UPDATE letters SET status=? WHERE id=?",
+                    (d["status"], lid))
+    if d.get("ch"):
+        con.execute("UPDATE letters SET ch=? WHERE id=?",
+                    (d["ch"].strip().upper()[:1], lid))
+    con.commit()
+    con.close()
+    return jsonify({"ok": True})
+
+
+@app.get("/media_letters/<int:lid>.jpg")
+def media_letter(lid):
+    import letters_core
+    return send_from_directory(letters_core.LETTER_DIR, f"{lid}.jpg")
+
+
 # ---------- transcription drafts ----------
 # A drafts file (data/transcription_drafts.json) is a list of
 # {"stone_id": 3, "transcription": "ER COF\nam\n…", "translation": "In memory…"}.
