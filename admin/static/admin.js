@@ -475,13 +475,16 @@ async function pollOutlineProgress() {
 }
 
 // generic background-job button: start endpoint + progress poller
-function bindJob(btnId, progId, startUrl, progUrl) {
+function bindJob(btnId, progId, startUrl, progUrl, onDone) {
   const btn = $(btnId), out = $(progId);
   const poll = async () => {
     const p = await api(progUrl);
     out.textContent = p.running ? `${p.done}/${p.total} — ${p.msg}` : p.msg;
     if (p.running) setTimeout(poll, 2000);
-    else btn.disabled = false;
+    else {
+      btn.disabled = false;
+      onDone?.();
+    }
   };
   btn.addEventListener("click", async () => {
     btn.disabled = true;
@@ -502,7 +505,8 @@ function bindJob(btnId, progId, startUrl, progUrl) {
 bindJob("#auBuild", "#auProg", "/api/audio/build", "/api/audio/progress");
 bindJob("#ceBuild", "#ceProg", "/api/constellation/build",
         "/api/constellation/progress");
-bindJob("#ltBuild", "#ltProg", "/api/letters/build", "/api/letters/progress");
+bindJob("#ltBuild", "#ltProg", "/api/letters/build", "/api/letters/progress",
+        () => loadLetters());
 
 async function loadLetters() {
   const ch = $("#ltCh").value;
