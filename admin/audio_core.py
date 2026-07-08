@@ -50,5 +50,9 @@ def synth(text, out_wav):
     import wave
     v = get_voice()
     os.makedirs(os.path.dirname(out_wav), exist_ok=True)
+    t = clean(text)
     with wave.open(out_wav, "wb") as w:
-        v.synthesize(clean(text), w)
+        if hasattr(v, "synthesize_wav"):   # piper-tts >= 1.3 (piper1-gpl)
+            v.synthesize_wav(t, w)
+        else:                              # piper-tts 1.2.x
+            v.synthesize(t, w)

@@ -572,6 +572,7 @@ AUDIO_DIR = os.path.join(os.path.dirname(__file__), "media", "audio")
 
 def _audio_worker(rows):
     import audio_core
+    errs = []
     try:
         AUDIO_PROG["msg"] = "loading Welsh voice (first run downloads ~65MB)…"
         audio_core.get_voice()
@@ -586,13 +587,14 @@ def _audio_worker(rows):
                 AUDIO_PROG["ok"] += 1
             except Exception as e:
                 AUDIO_PROG["failed"] += 1
-                AUDIO_PROG["msg"] = f"stone #{sid} failed: {e}"
+                errs.append(f"stone #{sid}: {type(e).__name__}: {e}")
             con.commit()
             AUDIO_PROG["done"] += 1
         con.close()
         AUDIO_PROG["msg"] = (f"done — {AUDIO_PROG['ok']} recordings built and "
-                             f"uploaded, {AUDIO_PROG['failed']} failed. "
-                             "Export + push to publish.")
+                             f"uploaded, {AUDIO_PROG['failed']} failed"
+                             + (f" (first error: {errs[0]})" if errs else "")
+                             + ". Export + push to publish.")
     except Exception as e:
         AUDIO_PROG["msg"] = "error: " + str(e)
     finally:
