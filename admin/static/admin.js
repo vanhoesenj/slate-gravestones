@@ -589,4 +589,12 @@ function renderPubStatus() {
   });
   document.querySelector('[data-tab="outlines"]').addEventListener("click",
     loadOutlines);
+  let guideLoaded = false;
+  document.querySelector('[data-tab="guide"]').addEventListener("click",
+    async () => {
+      if (guideLoaded) return;
+      const r = await api("/api/guide");
+      $("#guideBody").innerHTML = marked.parse(r.md);
+      guideLoaded = true;
+    });
 })();

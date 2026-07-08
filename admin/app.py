@@ -52,6 +52,16 @@ def _source_dir():
 
 # ---------- summary ----------
 
+@app.get("/api/guide")
+def guide():
+    path = os.path.join(os.path.dirname(__file__), "..", "ADMIN-GUIDE.md")
+    try:
+        with open(path) as f:
+            return jsonify({"md": f.read()})
+    except OSError:
+        return jsonify({"md": "ADMIN-GUIDE.md not found in the repo root."})
+
+
 @app.get("/api/summary")
 def summary():
     con = db.connect()

@@ -103,3 +103,23 @@ button:disabled { opacity: .45; cursor: default; }
   padding: 10px 12px; display: inline-block; line-height: 1.5; }
 #pubStatus .warn { color: var(--danger); }
 @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+/* in-app guide */
+.guide { max-width: 760px; background: #fff; border: 1px solid var(--line);
+  border-radius: 8px; padding: 26px 34px; line-height: 1.6; }
+.guide h1 { font-size: 24px; margin-top: 0; }
+.guide h2 { font-size: 19px; margin-top: 28px; border-bottom: 1px solid var(--line);
+  padding-bottom: 4px; }
+.guide h3 { font-size: 16px; margin-top: 20px; }
+.guide code { background: var(--bg); border: 1px solid var(--line);
+  border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+.guide pre { background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
+.guide pre code { border: none; background: none; padding: 0; }
+.guide table { border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+.guide th, .guide td { border: 1px solid var(--line); padding: 5px 10px;
+  text-align: left; }
+.guide th { background: var(--bg); }
+.guide li { margin: 4px 0; }
+.guide hr { border: none; border-top: 1px solid var(--line); margin: 24px 0; }
+.guide a { color: var(--accent); }
