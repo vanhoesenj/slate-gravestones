@@ -787,7 +787,11 @@ function openRelief(pid) {
     rlDraw();
   };
   color.onload = go; depth.onload = go;
-  depth.onerror = () => alert("Relief map not available for this photo yet.");
+  depth.onerror = () => alert(
+    "Couldn't load the relief map. If the file exists on R2, the bucket " +
+    "needs a CORS policy (Settings → CORS Policy → allow GET from this " +
+    "site) — WebGL requires CORS-approved images.");
+  color.onerror = depth.onerror;
   color.src = imgUrl(pid, "disp");
   depth.src = imgUrl(pid, "depth");
 }
