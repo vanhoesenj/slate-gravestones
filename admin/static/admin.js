@@ -27,6 +27,8 @@ async function refreshSummary() {
   $("#summary").textContent =
     `${s.cemeteries} cemeteries · ${s.stones} gravestones · ${s.photos} photos · ` +
     `${s.untagged} untagged · ${s.unsynced} not on R2`;
+  $("#stoneHint2").textContent = s.untagged
+    ? `— ${s.untagged} left to tag` : "— all tagged ✓";
   if (!$("#importDir").value && s.source_dir) $("#importDir").value = s.source_dir;
   window._sum = s;
 }

@@ -13,7 +13,7 @@ h2 { font-size: 16px; margin: 0 0 10px; }
   cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
 #tabs button.active { color: var(--accent); border-color: var(--accent); font-weight: 600; }
 #summary { margin-left: auto; color: var(--muted); font-size: 13px; }
-main { padding: 18px; }
+main { padding: 18px 18px 140px; }  /* breathing room at the page bottom */
 .tab { display: none; } .tab.active { display: block; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .pane { background: #fff; border: 1px solid var(--line); border-radius: 8px;
