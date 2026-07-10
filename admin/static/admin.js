@@ -189,7 +189,17 @@ function matchCemetery(dir) {
 function updateImpButtons() {
   $("#impOnePer").disabled = selected.size === 0 || !$("#importCem").value;
   $("#impGroup").disabled = selected.size < 2 || !$("#importCem").value;
+  $("#impSelAll").textContent =
+    selected.size === scanFiles.length && scanFiles.length
+      ? "Select none" : "Select all";
 }
+$("#impSelAll").addEventListener("click", () => {
+  if (selected.size === scanFiles.length) selected.clear();
+  else scanFiles.forEach((_f, i) => selected.add(i));
+  document.querySelectorAll("#importGrid .card").forEach((el) =>
+    el.classList.toggle("sel", selected.has(+el.dataset.i)));
+  updateImpButtons();
+});
 async function runImport(groups) {
   const cem = +$("#importCem").value;
   let done = 0;

@@ -176,14 +176,20 @@ function initMap() {
     map.addLayer({
       id: "cem-circles", type: "circle", source: "cems",
       paint: {
-        "circle-radius": ["+", 5, ["*", 1.4, ["sqrt", ["get", "count"]]]],
-        "circle-color": "#4a3f63", "circle-opacity": 0.85,
+        // cemeteries with no catalogued stones (yet) show as small, muted dots
+        "circle-radius": ["case", [">", ["get", "count"], 0],
+          ["+", 5, ["*", 1.4, ["sqrt", ["get", "count"]]]], 4],
+        "circle-color": ["case", [">", ["get", "count"], 0],
+          "#4a3f63", "#9a92ab"],
+        "circle-opacity": ["case", [">", ["get", "count"], 0], 0.85, 0.6],
         "circle-stroke-color": "#f7f5f0", "circle-stroke-width": 1.5,
       },
     });
     map.addLayer({
       id: "cem-labels", type: "symbol", source: "cems",
-      layout: { "text-field": ["get", "count"], "text-size": 10,
+      layout: { "text-field": ["case", [">", ["get", "count"], 0],
+                  ["to-string", ["get", "count"]], ""],
+                "text-size": 10,
                 "text-font": ["Noto Sans Regular"] },
       paint: { "text-color": "#f7f5f0" },
     });
@@ -253,12 +259,12 @@ function cemGeojson() {
   return {
     type: "FeatureCollection",
     features: DB.cemeteries
-      .filter((c) => c.lat != null && c.lng != null && per[c.id])
+      .filter((c) => c.lat != null && c.lng != null)
       .map((c) => ({
         type: "Feature",
         geometry: { type: "Point", coordinates: [c.lng, c.lat] },
         properties: { id: c.id, name: c.name, city: c.city, state: c.state,
-                      count: per[c.id] },
+                      count: per[c.id] || 0 },
       })),
   };
 }

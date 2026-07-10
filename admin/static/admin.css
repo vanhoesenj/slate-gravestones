@@ -58,7 +58,7 @@ button:disabled { opacity: .45; cursor: default; }
 .card .badge { position: absolute; top: 5px; right: 5px; background: rgba(34,48,58,.75);
   color: #fff; font-size: 11px; border-radius: 10px; padding: 1px 7px; }
 .card .warn { background: var(--danger); }
-.photostrip { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 10px; }
+.photostrip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .photostrip .ph { position: relative; flex: 0 0 auto; }
 .photostrip img { height: 150px; border-radius: 5px; display: block; }
 .photostrip .ph .tools { position: absolute; bottom: 4px; left: 4px; right: 4px;
