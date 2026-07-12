@@ -270,7 +270,7 @@ def edit_stone(sid):
     out-of-date client can never blank a field it doesn't know about."""
     d = request.json
     allowed = ["title", "year", "birth_year", "date_text", "notes",
-               "transcription", "cemetery_id"]
+               "transcription", "submitted_by", "cemetery_id"]
     sets = [f"{k}=?" for k in allowed if k in d]
     vals = [d[k] for k in allowed if k in d]
     con = db.connect()

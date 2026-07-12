@@ -171,6 +171,22 @@ function initMap() {
     center: [-73.2, 43.4], zoom: 4.6,
   });
   map.addControl(new maplibregl.NavigationControl());
+  map.addControl({
+    onAdd() {
+      const div = document.createElement("div");
+      div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "mapHome";
+      btn.title = "Reset to the full map view";
+      btn.textContent = "⌂";
+      btn.addEventListener("click", fitToData);
+      div.appendChild(btn);
+      this._div = div;
+      return div;
+    },
+    onRemove() { this._div.remove(); },
+  });
   map.on("load", () => {
     map.addSource("cems", { type: "geojson", data: cemGeojson() });
     map.addLayer({
@@ -714,6 +730,8 @@ function openLightbox(id) {
     <div class="tags">${DB.categories.map((cat) =>
       (byCat[cat.id] || []).map((n) =>
         `<span><b>${esc(cat.name)}:</b> ${esc(n)}</span>`).join("")).join("")}</div>
+    ${s.sub ? `<div class="lbsub">📷 Photo contributed by
+      <strong>${esc(s.sub)}</strong></div>` : ""}
     <div class="lbbtns">
       <button id="cmpBtn"></button>
       <button id="linkBtn" title="Copy a direct link to this gravestone">🔗 copy link</button>

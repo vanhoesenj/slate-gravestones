@@ -28,7 +28,7 @@ def export():
     }
     stones = con.execute(
         "SELECT id, cemetery_id AS cem, title, year, birth_year AS birth, "
-        "notes, transcription AS trans, has_audio "
+        "notes, transcription AS trans, has_audio, submitted_by "
         "FROM stones ORDER BY id").fetchall()
     persons_by_stone = {}
     for r in con.execute(
@@ -59,6 +59,9 @@ def export():
         rec = dict(s)
         if rec.pop("has_audio", 0):
             rec["audio"] = 1
+        sub = (rec.pop("submitted_by", "") or "").strip()
+        if sub:
+            rec["sub"] = sub
         rec["persons"] = persons_by_stone.get(s["id"], [])
         rec["tags"] = tags_by_stone.get(s["id"], [])
         if s["id"] in outline_by_stone:

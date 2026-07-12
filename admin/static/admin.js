@@ -258,6 +258,7 @@ async function openStone(id) {
   renderPersons(s.persons?.length ? s.persons : [{}]);
   $("#sdTrans").value = s.transcription || "";
   $("#sdNotes").value = s.notes || "";
+  $("#sdSub").value = s.submitted_by || "";
   $("#sdCem").value = s.cemetery_id;
   $("#sdPhotos").innerHTML = s.photos.map((p) =>
     `<div class="ph ${p.is_primary ? "primary" : ""}">
@@ -365,6 +366,7 @@ $("#sdForm").addEventListener("submit", async (e) => {
     persons: gatherPersons(),
     transcription: $("#sdTrans").value,
     notes: $("#sdNotes").value,
+    submitted_by: $("#sdSub").value.trim(),
     cemetery_id: +$("#sdCem").value,
   }});
   const tag_ids = [...$("#sdTagGroups").querySelectorAll(".chip.on")].map((c) => +c.dataset.id);

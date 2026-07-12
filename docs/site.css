@@ -313,6 +313,15 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
 .glyph figcaption { font-family: "Jost", sans-serif; font-size: 10px;
   color: var(--ordovician); }
 
+/* contributor credit */
+.lbsub { margin-top: 12px; font-size: 13px; color: var(--ordovician);
+  background: #fff; border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 14px; display: inline-block; }
+.lbsub strong { color: var(--slate-dark); }
+
+/* map home button */
+#mapHome { font-size: 18px; line-height: 1; color: var(--slate-mid); }
+
 /* audio button */
 #audioBtn { border: 1px solid var(--slate-mid); background: transparent;
   color: var(--slate-mid); border-radius: 999px; padding: 1px 10px;

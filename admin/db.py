@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS stones (
     birth_year INTEGER,
     transcription TEXT DEFAULT '',    -- inscription as carved, line breaks kept
     has_audio INTEGER DEFAULT 0,      -- Welsh TTS audio built & uploaded
+    submitted_by TEXT DEFAULT '',     -- contributor credit (display only)
     date_text TEXT DEFAULT '',        -- full date as inscribed, free text
     notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
@@ -141,6 +142,9 @@ def init():
         con.commit()
     if "has_audio" not in cols:
         con.execute("ALTER TABLE stones ADD COLUMN has_audio INTEGER DEFAULT 0")
+        con.commit()
+    if "submitted_by" not in cols:
+        con.execute("ALTER TABLE stones ADD COLUMN submitted_by TEXT DEFAULT ''")
         con.commit()
     pcols = [r["name"] for r in con.execute("PRAGMA table_info(photos)")]
     if "outline_path" not in pcols:
