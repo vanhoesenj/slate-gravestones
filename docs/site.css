@@ -421,6 +421,9 @@ aside select, aside input { width: 100%; margin-top: 3px; padding: 6px 8px;
 .cemPopup td { padding: 2px 0; }
 .cemPopup td:first-child { color: var(--ordovician); padding-right: 12px;
   white-space: nowrap; }
+.cemPopup .cemNote { margin: 8px 0 0; font-size: 13px; line-height: 1.5;
+  color: var(--ink); border-top: 1px solid var(--line); padding-top: 7px;
+  white-space: pre-wrap; }
 .cemPopup a { display: inline-block; margin-top: 7px; color: var(--slate-mid);
   font-size: 13px; }
 .cemPopup a:hover { color: var(--harbour); }

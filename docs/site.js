@@ -259,6 +259,7 @@ function cemProfileHTML(cemId) {
       ${topShape ? `<tr><td>Top shape</td><td>${esc(topShape)}</td></tr>` : ""}
       <tr><td>Language</td><td>${langLine}</td></tr>
     </table>
+    ${c.notes ? `<p class="cemNote">${esc(c.notes)}</p>` : ""}
     <a href="#" onclick="setCem(${cemId});return false">filter to this cemetery →</a>
   </div>`;
 }

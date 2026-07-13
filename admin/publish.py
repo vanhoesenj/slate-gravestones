@@ -21,11 +21,14 @@ def export():
             "SELECT id, category_id AS cat, name FROM tags ORDER BY name")],
         "cemeteries": [dict(r) for r in con.execute(
             """SELECT c.id, c.name, c.city, c.state, c.country, c.lat, c.lng,
-                      COUNT(s.id) AS stones
+                      c.notes, COUNT(s.id) AS stones
                FROM cemeteries c LEFT JOIN stones s ON s.cemetery_id = c.id
                GROUP BY c.id ORDER BY c.name""")],
         "stones": [],
     }
+    for c in data["cemeteries"]:       # keep the JSON lean
+        if not (c.get("notes") or "").strip():
+            c.pop("notes", None)
     stones = con.execute(
         "SELECT id, cemetery_id AS cem, title, year, birth_year AS birth, "
         "notes, transcription AS trans, has_audio, submitted_by "
