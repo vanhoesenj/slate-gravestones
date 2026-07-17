@@ -38,7 +38,13 @@ button:disabled { opacity: .45; cursor: default; }
 .searchrow { display: flex; gap: 8px; margin: 10px 0; }
 .searchrow input { flex: 1; }
 .hint { color: var(--muted); font-size: 13px; }
-.rowlist { list-style: none; margin: 0 0 12px; padding: 0; max-height: 300px; overflow: auto; }
+.rowlist { list-style: none; margin: 0 0 12px; padding: 0; max-height: 62vh;
+  overflow: auto; }
+.rowlist .grpHead { background: var(--bg); font-family: inherit;
+  font-weight: 700; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--accent); cursor: default;
+  position: sticky; top: 0; }
+.rowlist .grpHead:hover { background: var(--bg); }
 .rowlist li { padding: 7px 9px; border-bottom: 1px solid var(--line); cursor: pointer;
   display: flex; justify-content: space-between; }
 .rowlist li:hover { background: var(--bg); }

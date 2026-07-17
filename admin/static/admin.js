@@ -58,9 +58,19 @@ function setCemMarker(lng, lat) {
 
 async function loadCemeteries() {
   cemeteries = await api("/api/cemeteries");
-  $("#cemList").innerHTML = cemeteries.map((c) =>
-    `<li data-id="${c.id}"><span>${esc(c.name)}</span>
-     <span class="n">${esc(c.state || c.country)} · ${c.stones} gravestones</span></li>`).join("");
+  // group by state/province (surfaces typos like "Vemont" as their own group)
+  const groups = {};
+  cemeteries.forEach((c) => {
+    const k = (c.state || c.country || "—").trim() || "—";
+    (groups[k] = groups[k] || []).push(c);
+  });
+  $("#cemList").innerHTML = Object.keys(groups).sort().map((k) =>
+    `<li class="grpHead">${esc(k)}
+       <span class="n">${groups[k].length}</span></li>` +
+    groups[k].sort((a, b) => a.name.localeCompare(b.name)).map((c) =>
+      `<li data-id="${c.id}"><span>${esc(c.name)}</span>
+       <span class="n">${esc(c.city || "")} · ${c.stones} gravestones</span></li>`
+    ).join("")).join("");
   const opts = cemeteries.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
   $("#importCem").innerHTML = opts;
   $("#sdCem").innerHTML = opts;
