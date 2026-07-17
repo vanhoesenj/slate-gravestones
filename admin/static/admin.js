@@ -58,26 +58,38 @@ function setCemMarker(lng, lat) {
 
 async function loadCemeteries() {
   cemeteries = await api("/api/cemeteries");
+  renderCemList();
+  const opts = cemeteries.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  $("#importCem").innerHTML = opts;
+  $("#sdCem").innerHTML = opts;
+  $("#stoneCemFilter").innerHTML = `<option value="">All cemeteries</option>` + opts;
+}
+
+function renderCemList() {
   // group by state/province (surfaces typos like "Vemont" as their own group)
+  const stateOf = (c) => (c.state || c.country || "—").trim() || "—";
   const groups = {};
-  cemeteries.forEach((c) => {
-    const k = (c.state || c.country || "—").trim() || "—";
-    (groups[k] = groups[k] || []).push(c);
-  });
-  $("#cemList").innerHTML = Object.keys(groups).sort().map((k) =>
+  cemeteries.forEach((c) => (groups[stateOf(c)] =
+    groups[stateOf(c)] || []).push(c));
+  // state filter dropdown (preserve the current choice)
+  const sel = $("#cemStateFilter");
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">All states (${cemeteries.length})</option>` +
+    Object.keys(groups).sort().map((k) =>
+      `<option value="${esc(k)}">${esc(k)} (${groups[k].length})</option>`).join("");
+  sel.value = Object.keys(groups).includes(cur) ? cur : "";
+  const shown = sel.value ? [sel.value] : Object.keys(groups).sort();
+  $("#cemList").innerHTML = shown.map((k) =>
     `<li class="grpHead">${esc(k)}
        <span class="n">${groups[k].length}</span></li>` +
     groups[k].sort((a, b) => a.name.localeCompare(b.name)).map((c) =>
       `<li data-id="${c.id}"><span>${esc(c.name)}</span>
        <span class="n">${esc(c.city || "")} · ${c.stones} gravestones</span></li>`
     ).join("")).join("");
-  const opts = cemeteries.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
-  $("#importCem").innerHTML = opts;
-  $("#sdCem").innerHTML = opts;
-  $("#stoneCemFilter").innerHTML = `<option value="">All cemeteries</option>` + opts;
-  document.querySelectorAll("#cemList li").forEach((li) =>
+  $("#cemList").querySelectorAll("li[data-id]").forEach((li) =>
     li.addEventListener("click", () => editCem(+li.dataset.id)));
 }
+$("#cemStateFilter").addEventListener("change", renderCemList);
 
 function showCemForm(c) {
   $("#cemForm").classList.remove("hidden");
