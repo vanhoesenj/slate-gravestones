@@ -27,8 +27,19 @@ async function refreshSummary() {
   $("#summary").textContent =
     `${s.cemeteries} cemeteries · ${s.stones} gravestones · ${s.photos} photos · ` +
     `${s.untagged} untagged · ${s.unsynced} not on R2`;
-  $("#stoneHint2").textContent = s.untagged
-    ? `— ${s.untagged} left to tag` : "— all tagged ✓";
+  const bits = [];
+  bits.push(s.untagged ? `${s.untagged} left to tag` : "all tagged ✓");
+  if (s.drafts) bits.push(`${s.drafts} [DRAFT] to review`);
+  $("#stoneHint2").innerHTML = "— " + bits.join(" · ") +
+    (s.drafts ? ` <a href="#" id="draftJump">show them</a>` : "");
+  $("#draftJump")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    document.querySelector('[data-tab="stones"]').click();
+    $("#stoneSearch").value = "[DRAFT]";
+    $("#stoneCemFilter").value = "";
+    $("#stoneUntagged").checked = false;
+    loadStones();
+  });
   if (!$("#importDir").value && s.source_dir) $("#importDir").value = s.source_dir;
   window._sum = s;
 }

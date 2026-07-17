@@ -74,6 +74,9 @@ def summary():
         "untagged": con.execute(
             "SELECT COUNT(*) c FROM stones WHERE id NOT IN "
             "(SELECT stone_id FROM stone_tags)").fetchone()["c"],
+        "drafts": con.execute(
+            "SELECT COUNT(*) c FROM stones "
+            "WHERE transcription LIKE '[DRAFT]%'").fetchone()["c"],
         "r2_configured": r2.r2_configured(),
         "source_dir": _source_dir(),
     }
